@@ -18,7 +18,7 @@ export default function StatusScreen({
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center px-4 pt-20 text-center">
       <div
         aria-hidden="true"
-        className="flex size-20 items-center justify-center rounded-tag bg-primary-soft text-primary"
+        className="flex size-24 items-center justify-center rounded-tag bg-primary-soft text-primary"
       >
         {icon}
       </div>

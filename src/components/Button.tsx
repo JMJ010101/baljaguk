@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 type Variant = "primary" | "secondary";
 
 const base =
-  "inline-flex min-h-11 w-full items-center justify-center rounded-button px-5 py-2 text-base font-bold";
+  "inline-flex min-h-12 w-full items-center justify-center rounded-button px-5 py-2 text-base font-bold";
 
 const variants: Record<Variant, string> = {
   primary: "bg-primary text-on-primary",
