@@ -119,8 +119,15 @@ db/migrations/
   - detailCommon2(공통정보), detailIntro2(소개정보: 운영시간, 쉬는 날 등), detailPetTour2(반려동물 동반 정보)
   - 이 외 오퍼레이션(detailInfo2, detailImage2, petTourSyncList2, ldongCode2, lclsSystmCode2)은 필요해질 때만 쓴다.
 - 목록 응답에는 contentid, contenttypeid, title, addr1, mapx, mapy, firstimage, modifiedtime 등이 있다. 동반 조건과 운영시간은 목록에 없다.
+  - 실제 호출로 확인한 목록 필드: addr1, addr2, areacode, cat1~cat3, contentid, contenttypeid, createdtime, firstimage, firstimage2, cpyrhtDivCd, mapx, mapy, mlevel, modifiedtime, sigungucode, tel, title, zipcode, lDongRegnCd, lDongSignguCd, lclsSystm1~lclsSystm3
+  - showflag는 목록(areaBasedList2) 응답에 없다.
 - 동반 조건은 detailPetTour2(acmpyTypeCd, acmpyPsblCpam, acmpyNeedMtr, etcAcmpyInfo 등), 운영시간은 detailIntro2(타입별로 필드명이 다르다)로 장소마다 따로 조회해야 한다.
-- 위 동반 정보 필드는 모두 선택 항목이고 매뉴얼 예시상 자유 텍스트다. 이 값으로 코드 필터링(hard 조건)을 할 때의 기준: TODO(확인 필요): 값의 종류를 실제 호출로 확인한 뒤 결정
+- 운영시간 필드명은 타입마다 다르다. 쇼핑(38)은 opentime이고, 형식이 일정하지 않다(`09:00-20:00`, `09:00~22:00`). 파싱하지 말고 문자열 그대로 보여준다.
+- 위 동반 정보 필드는 모두 선택 항목이고 매뉴얼 예시상 자유 텍스트다. 값이 없으면 빈 문자열("")로 온다.
+  - 실제 호출로 확인한 acmpyTypeCd 값(샘플 8곳): `전구역 동반가능`, `일부구역 동반가능`. 다른 값이 있는지는 TODO(확인 필요)
+  - 나머지 필드(acmpyPsblCpam, acmpyNeedMtr, etcAcmpyInfo, relaAcdntRiskMtr 등)는 장소마다 채워지는 항목이 다른 자유 텍스트다. 구역, 견종, 몸무게 조건이 여기에만 적혀 있다. etcAcmpyInfo에는 줄바꿈(\n)이 들어갈 수 있다.
+  - hard 조건(제안): acmpyTypeCd 값이 있는 장소만 후보로 둔다. 구역, 견종, 몸무게 등 자유 텍스트 조건은 코드로 필터링하지 않고 soft 조건(AI 프롬프트)과 "방문 전 확인 필요" 안내로 처리한다.
+  - TODO(확인 필요): acmpyTypeCd가 비어 있는 장소가 실제로 있는지 확인
 - 응답에 없는 필드를 추측해서 쓰지 않는다. 필드를 쓰기 전에 매뉴얼을 확인한다.
 - 응답은 반드시 normalize 함수로 우리 Place 타입으로 변환한 뒤 사용한다.
   - 숫자도 문자열로 온다(contentid, mapx, mapy). normalize에서 숫자로 변환한다.
@@ -130,7 +137,9 @@ db/migrations/
   - showflag=0(비표출) 장소는 사용하지 않는다. (제안, showflag는 petTourSyncList2 응답에 있는 항목이다.)
 - 원본 응답을 컴포넌트나 AI 프롬프트에 직접 넘기지 않는다.
 - 이미지의 cpyrhtDivCd가 Type3이면 변형(자르기, 필터 등)하지 않는다. 이미지에는 출처를 표시한다.
-- contentTypeId: 코드표는 12(관광지), 14(문화시설), 15(행사/공연/축제), 28(레포츠), 32(숙박), 38(쇼핑), 39(음식점)이다. 단, 목록·소개 조회의 파라미터 설명에는 75, 76 등 다른 값이 적혀 있어 문서가 서로 맞지 않는다. TODO(확인 필요): 실제 호출로 어느 쪽이 맞는지 확인
+- contentTypeId: 코드표는 12(관광지), 14(문화시설), 15(행사/공연/축제), 28(레포츠), 32(숙박), 38(쇼핑), 39(음식점)이다. 단, 목록·소개 조회의 파라미터 설명에는 75, 76 등 다른 값이 적혀 있어 문서가 서로 맞지 않는다.
+  - 실제 호출 결과 12, 28, 32, 38, 39가 나왔고 75, 76은 나오지 않았다. 코드표(12 계열)를 따른다. 75, 76으로 직접 호출해 보지는 않았다.
+  - TODO(확인 필요): 14(문화시설), 15(행사/공연/축제)는 아직 확인하지 못했다.
 - 호출 한도: 개발계정은 일 1,000건이다. 장소 1곳의 동반 정보와 운영시간을 보려면 최소 2번(detailPetTour2, detailIntro2) 더 호출해야 하므로, 상세 조회는 후보로 좁혀진 장소에만 한다.
 - 상세 조회는 place_cache에 먼저 확인하고, 없거나 expires_at이 지났을 때만 외부 API를 호출한다.
 - 캐시 만료 기간 (제안값): 24시간. 매뉴얼의 데이터 갱신주기가 일 1회다. (공공데이터포털 페이지에는 "실시간"이라고 적혀 있어 두 자료가 다르다.)
