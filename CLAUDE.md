@@ -1,0 +1,149 @@
+# CLAUDE.md
+
+## 프로젝트 개요
+- 이름: 발자국
+- 소개: 반려동물과 함께 갈 수 있는 장소만으로 하루 여행 코스를 만들어주는 서비스
+- 목적: 5~6일 안에 만드는 개인 프로젝트이자 포트폴리오다. 구조 설계, 오류 처리, 프롬프트 버전 비교를 보여주는 것이 목표다.
+- 개발 방식: 바이브코딩 (Claude Code + VS Code)
+
+## 기술 스택
+- Next.js 16.4.3 (App Router) + React 19.3.0 + TypeScript, Vercel 배포
+- 스타일: Tailwind CSS v4 (package.json에 이미 설치되어 있다)
+- 아직 설치되지 않은 패키지(zod, Supabase 클라이언트, OpenAI SDK, server-only)는 해당 기능을 구현할 때 설치한다.
+- DB: Supabase (Postgres)
+- AI: OpenAI API / 모델명: TODO(확인 필요): 사용할 OpenAI 모델명 (AI 연동 기능을 구현하기 전에 정한다)
+- 모델명은 한 곳(상수 또는 환경변수)에서만 정의한다. 프롬프트 버전을 비교할 때는 같은 모델로 비교한다.
+- 검증: zod
+- 장소 데이터: 한국관광공사 '반려동물 동반여행 서비스' API (공공데이터포털, 인증키 필요)
+- 지도: 카카오 지도 API. 관광공사 API 응답에 좌표 필드(mapx, mapy)가 있으나 선택 항목이라 비어 있을 수 있다.
+- 카카오 키는 2종류이고 용도가 다르다. (카카오 공식 문서 기준)
+  - JavaScript 키: 브라우저에서 지도 Web(JavaScript) SDK를 쓸 때 사용한다. 이 키에 'JavaScript SDK 도메인'을 등록해야 한다.
+  - REST API 키: 서버에서 REST API(장소 검색, 좌표 변환 등)를 호출할 때 사용한다. 허용 IP를 설정할 수 있다.
+  - 지도 SDK에 REST API 키를 넣으면 에러가 난다. 키를 서로 바꿔 쓰지 않는다.
+- 카카오디벨로퍼스에서 앱을 만들고 카카오맵 API 사용 설정을 ON으로 해야 한다.
+- 카카오맵 API에는 무료 쿼터가 있고, 소진하면 429 에러가 난다. 429는 RATE_LIMIT으로 변환한다. (제안)
+- 카카오 REST API 사용 여부: TODO(확인 필요): 쓰기로 정하기 전에는 REST API 키를 쓰는 코드를 만들지 않는다.
+- TODO(확인 필요): 개발 주소(localhost)와 Vercel 배포 주소를 JavaScript SDK 도메인에 각각 등록해야 하는지, Next.js(App Router)에서 SDK를 불러오는 방법은 카카오 공식 문서를 확인한 뒤 기록
+- 위 항목을 확인하기 전에는 지도 관련 패키지를 설치하지 않는다.
+
+## 빌드/실행 명령어
+- 개발 서버 `npm run dev` / 빌드 `npm run build` / 빌드 결과 실행 `npm run start` / 린트 `npm run lint`
+- 테스트 스크립트는 없다. package.json에 없는 스크립트는 지어내서 실행하지 않는다. 추가가 필요하면 먼저 나에게 알린다.
+- 기능 하나를 끝낼 때마다 `npm run lint`와 `npm run build`가 통과하는지 확인한다.
+
+## 핵심 설계 원칙
+1. 장소는 외부 API에서 가져온 "실제" 데이터만 사용한다.
+   - AI는 장소를 만들어내지 않는다. 주어진 후보 중에서 고르고 순서만 정한다.
+   - AI 응답에는 placeId만 받는다.
+2. 반드시 지켜야 할 조건(hard)은 코드가 필터링한다. 취향성 조건(soft)만 AI 프롬프트로 전달한다.
+3. 모든 AI 응답은 zod로 검증한다.
+   - 검증에 실패하면 재시도하거나 사용자에게 오류 안내를 보여준다.
+   - 검증되지 않은 AI 응답을 그대로 화면이나 DB에 쓰지 않는다.
+4. 정보가 틀릴 수 있는 항목(동반 조건, 운영시간 등)에는 "방문 전 확인 필요" 안내를 표시한다.
+5. 프롬프트는 lib/ai/prompts/ 에 버전 파일(v1, v2)로 관리한다.
+   - 프롬프트 문자열을 코드 곳곳에 흩어놓지 않는다.
+6. 페르소나(반려동물 프로필 기반 규칙)는 함수로 분리한다.
+   - 나중에 다른 페르소나를 추가할 수 있는 구조로 만든다.
+   - 지금은 반려동물 하나만 구현하고, UI에는 노출하지 않는다.
+
+## 폴더 구조
+```
+src/
+├─ app/ (page.tsx, places/, places/[id]/, course/new/, course/[id]/, lab/, about/, error.tsx, not-found.tsx)
+├─ app/api/ (places/route.ts, course/route.ts)
+├─ lib/
+│  ├─ ai/ (client.ts, parse.ts, prompts/)
+│  ├─ tour/ (client.ts, normalize.ts)
+│  ├─ db/ (client.ts, courses.ts, placeCache.ts, usage.ts)
+│  ├─ personas/ (index.ts, pet.ts)
+│  ├─ errors.ts, rateLimit.ts
+└─ types/index.ts
+db/migrations/
+```
+- route.ts는 얇게 유지한다. 로직은 lib/에 둔다.
+- lib/tour/ 는 외부 API 호출(client.ts)과 응답 변환(normalize.ts)만 담당한다.
+- db/migrations/ 에는 번호를 붙인 SQL 파일만 둔다.
+- 한 파일에 로직을 몰아넣지 않는다.
+
+## 보안 규칙
+- OpenAI 키, 관광공사 API 키, Supabase service_role 키는 서버 코드에서만 사용한다.
+- 위 키에는 NEXT_PUBLIC_ 접두사를 절대 붙이지 않는다.
+- 카카오 JavaScript 키는 브라우저에서 쓰는 키이므로 이 규칙의 예외다. 대신 JavaScript SDK 도메인 등록으로 사용 범위를 제한한다.
+- 카카오 REST API 키는 서버 전용이다. NEXT_PUBLIC_ 접두사를 붙이지 않는다.
+- .env* 파일은 커밋하지 않는다. .gitignore에 포함되어 있는지 가장 먼저 확인한다.
+- lib/db 안의 파일은 'server-only'를 import한다.
+- 모든 Supabase 테이블은 RLS를 켜둔 상태로 유지한다.
+- IP는 원본이 아니라 해시해서 저장한다.
+- 키 값을 코드, 로그, 커밋 메시지에 직접 쓰지 않는다.
+
+## DB 규칙
+- DB 접근은 lib/db 안의 함수로만 한다.
+- 화면이나 API Route에서 쿼리를 직접 쓰지 않는다.
+- 스키마 변경은 db/migrations/ 에 번호를 붙인 새 SQL 파일로만 한다.
+- 기존 마이그레이션 파일은 수정하지 않는다.
+- 테이블: courses (owner_id는 NULL 허용), place_cache, usage_log
+- 로그인은 아직 없다. 나중을 위해 courses.owner_id를 유지한다.
+- JSONB로 저장한 데이터는 읽을 때 zod로 다시 검증한다.
+- 컬럼 초안 (제안값, 첫 마이그레이션 작성 시 확정한다):
+  - courses: id(uuid, PK), owner_id(uuid, NULL 허용), input(jsonb, 사용자 조건), result(jsonb, 순서가 있는 placeId 목록과 이유), prompt_version(text), created_at
+  - place_cache: place_id(text, PK), data(jsonb, normalize된 Place), fetched_at, expires_at
+  - usage_log: id, ip_hash(text), endpoint(text), created_at
+- 컬럼을 위 초안에 임의로 추가하지 않는다. 필요하면 새 마이그레이션 파일로 추가한다.
+
+## 오류 처리 규칙
+- 에러는 lib/errors.ts의 AppError(code, userMessage, status)로 통일한다.
+- 에러 코드는 아래 6개만 사용한다.
+  - RATE_LIMIT, API_TIMEOUT, API_FAILED, BAD_AI_RESPONSE, INVALID_INPUT, DB_UNAVAILABLE
+- 외부 API 호출에는 반드시 타임아웃을 건다.
+  - 타임아웃 (제안값): 관광공사 API 8초, OpenAI API 20초
+- 타임아웃 합계가 Vercel 함수 최대 실행 시간 안에 들어오는지 배포 전에 확인한다. (TODO(확인 필요): 현재 요금제의 최대 실행 시간)
+- 위 숫자는 각 파일 상단의 상수로만 정의한다. 코드 중간에 숫자를 직접 쓰지 않는다.
+- 관광공사 API 응답 오류코드는 아래처럼 AppError로 변환한다.
+  - 05(서비스 연결실패) → API_TIMEOUT
+  - 22(서비스 요청제한횟수 초과) → RATE_LIMIT. (초당 초과 코드 23은 공공데이터포털 안내 페이지에만 있고 매뉴얼에는 없다.)
+  - 그 외 오류 → API_FAILED
+- 공공데이터포털 오류 응답은 _type=json을 줘도 XML로만 나온다. JSON 파싱에 실패하면 XML 오류 본문(returnReasonCode)을 확인한 뒤 위 표대로 변환한다.
+- 사용자에게는 상황별 안내 문구를 보여준다.
+- 내부 에러 내용(스택, 원본 메시지)은 사용자에게 노출하지 않는다.
+- 아래 상태 화면을 모두 구현한다.
+  - 로딩, 빈 결과, API 실패, 호출 한도 초과, 코스 생성 실패, 유효하지 않은 링크, DB 연결 실패
+- 자체 호출 한도 (제안값, ip_hash 기준): 코스 생성 시간당 5회, 장소 조회 분당 30회
+- AI 응답 검증 실패 시 재시도는 최대 1회(총 2번 호출)로 제한한다. 그래도 실패하면 BAD_AI_RESPONSE를 던진다.
+- 관광공사 API 호출 실패는 자동 재시도하지 않는다. (호출 한도를 아끼기 위해)
+
+## 외부 API 규칙 (한국관광공사, 활용매뉴얼 Ver4.1 기준)
+- 서비스: KorPetTourService2 / 기본 URL: apis.data.go.kr/B551011/KorPetTourService2 / REST(GET), 응답은 기본 XML이고 `_type=json`을 붙이면 JSON이다. HTTPS를 사용한다.
+- 모든 요청에 serviceKey(필수), MobileOS(필수, 웹 서비스이므로 ETC), MobileApp(필수, 서비스명)을 넣는다.
+- 사용하는 오퍼레이션:
+  - areaBasedList2(지역기반 목록), locationBasedList2(위치기반 목록, mapX/mapY/radius 필수, radius 최대 20000m), searchKeyword2(키워드 검색)
+  - detailCommon2(공통정보), detailIntro2(소개정보: 운영시간, 쉬는 날 등), detailPetTour2(반려동물 동반 정보)
+  - 이 외 오퍼레이션(detailInfo2, detailImage2, petTourSyncList2, ldongCode2, lclsSystmCode2)은 필요해질 때만 쓴다.
+- 목록 응답에는 contentid, contenttypeid, title, addr1, mapx, mapy, firstimage, modifiedtime 등이 있다. 동반 조건과 운영시간은 목록에 없다.
+- 동반 조건은 detailPetTour2(acmpyTypeCd, acmpyPsblCpam, acmpyNeedMtr, etcAcmpyInfo 등), 운영시간은 detailIntro2(타입별로 필드명이 다르다)로 장소마다 따로 조회해야 한다.
+- 위 동반 정보 필드는 모두 선택 항목이고 매뉴얼 예시상 자유 텍스트다. 이 값으로 코드 필터링(hard 조건)을 할 때의 기준: TODO(확인 필요): 값의 종류를 실제 호출로 확인한 뒤 결정
+- 응답에 없는 필드를 추측해서 쓰지 않는다. 필드를 쓰기 전에 매뉴얼을 확인한다.
+- 응답은 반드시 normalize 함수로 우리 Place 타입으로 변환한 뒤 사용한다.
+  - 숫자도 문자열로 온다(contentid, mapx, mapy). normalize에서 숫자로 변환한다.
+  - 값이 없으면 빈 문자열("")로 온다. normalize에서 undefined로 바꾼다.
+  - mapx는 경도, mapy는 위도다(WGS84). 순서를 뒤집지 않는다.
+  - 좌표가 없는 장소는 코스 후보에서 제외한다. (제안)
+  - showflag=0(비표출) 장소는 사용하지 않는다. (제안, showflag는 petTourSyncList2 응답에 있는 항목이다.)
+- 원본 응답을 컴포넌트나 AI 프롬프트에 직접 넘기지 않는다.
+- 이미지의 cpyrhtDivCd가 Type3이면 변형(자르기, 필터 등)하지 않는다. 이미지에는 출처를 표시한다.
+- contentTypeId: 코드표는 12(관광지), 14(문화시설), 15(행사/공연/축제), 28(레포츠), 32(숙박), 38(쇼핑), 39(음식점)이다. 단, 목록·소개 조회의 파라미터 설명에는 75, 76 등 다른 값이 적혀 있어 문서가 서로 맞지 않는다. TODO(확인 필요): 실제 호출로 어느 쪽이 맞는지 확인
+- 호출 한도: 개발계정은 일 1,000건이다. 장소 1곳의 동반 정보와 운영시간을 보려면 최소 2번(detailPetTour2, detailIntro2) 더 호출해야 하므로, 상세 조회는 후보로 좁혀진 장소에만 한다.
+- 상세 조회는 place_cache에 먼저 확인하고, 없거나 expires_at이 지났을 때만 외부 API를 호출한다.
+- 캐시 만료 기간 (제안값): 24시간. 매뉴얼의 데이터 갱신주기가 일 1회다. (공공데이터포털 페이지에는 "실시간"이라고 적혀 있어 두 자료가 다르다.)
+
+## 작업 방식
+- 한 번에 한 기능씩 구현한다.
+- 기능 하나가 동작할 때마다 커밋하자고 나에게 알려준다.
+- 파일을 크게 바꾸기 전에 어떤 파일을 어떻게 바꿀지 먼저 요약해서 보여준다.
+- 요청하지 않은 기능이나 라이브러리를 임의로 추가하지 않는다.
+- 불확실한 사실(API 스펙, 라이브러리 사용법)은 추측하지 않는다. 공식 문서 확인이 필요하다고 말한다.
+
+## 하지 말 것
+- AI에게 계산이나 사실 검증을 맡기지 않는다.
+- 클라이언트 컴포넌트에서 DB나 외부 API를 직접 호출하지 않는다.
+- 한 파일에 로직을 몰아넣지 않는다.
+- 로그인, 결제 등 현재 범위 밖의 기능을 만들지 않는다.
