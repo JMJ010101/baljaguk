@@ -1,6 +1,6 @@
 // 관광공사 반려동물 동반여행 API(KorPetTourService2) 호출만 담당한다. 응답 변환은 normalize.ts에서 한다.
 // 이 파일의 함수는 원본 item(들)만 돌려준다. 외부 호출은 자동 재시도하지 않는다.
-// TODO(확인 필요): 지역 코드, 정렬 파라미터는 매뉴얼 확인 후 추가
+// TODO(확인 필요): 지역 코드 값 목록은 법정동 코드 조회 오퍼레이션(ldongCode2)을 확인해야 한다. 지역 필터는 아직 만들지 않았다.
 import "server-only";
 import { AppError } from "@/lib/errors";
 
@@ -66,7 +66,7 @@ function errorFromNonJson(text: string): AppError {
 type TourResponse = {
   response?: {
     header?: { resultCode?: string | number };
-    body?: { items?: unknown };
+    body?: { items?: unknown; totalCount?: unknown };
   };
 };
 
@@ -106,12 +106,31 @@ function extractItems(json: TourResponse): unknown[] {
   return Array.isArray(item) ? item : [item];
 }
 
-export async function fetchAreaBasedList(params: { numOfRows: number; pageNo: number }): Promise<unknown[]> {
-  const json = await requestTour("areaBasedList2", {
+// body.totalCount를 숫자로 꺼낸다. 없거나 숫자가 아니면 undefined이고 오류로 만들지 않는다.
+// TODO(확인 필요): 매뉴얼 예제 기준이다. 실제 응답에서의 모양(숫자/문자열)은 확인하지 못했다.
+function extractTotalCount(json: TourResponse): number | undefined {
+  const raw = json?.response?.body?.totalCount;
+  if (typeof raw === "number") return Number.isFinite(raw) ? raw : undefined;
+  if (typeof raw !== "string" || raw.trim() === "") return undefined;
+  const num = Number(raw);
+  return Number.isFinite(num) ? num : undefined;
+}
+
+// contentTypeId, arrange는 값이 있을 때만 보낸다. 보내지 않으면 기존 요청과 같다.
+export async function fetchAreaBasedList(params: {
+  numOfRows: number;
+  pageNo: number;
+  contentTypeId?: number;
+  arrange?: string;
+}): Promise<{ items: unknown[]; totalCount?: number }> {
+  const query: Record<string, string> = {
     numOfRows: String(params.numOfRows),
     pageNo: String(params.pageNo),
-  });
-  return extractItems(json);
+  };
+  if (params.contentTypeId !== undefined) query.contentTypeId = String(params.contentTypeId);
+  if (params.arrange !== undefined) query.arrange = params.arrange;
+  const json = await requestTour("areaBasedList2", query);
+  return { items: extractItems(json), totalCount: extractTotalCount(json) };
 }
 
 export async function fetchPetTourDetail(contentId: number): Promise<unknown[]> {
