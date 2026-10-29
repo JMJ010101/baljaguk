@@ -11,3 +11,19 @@ export type Place = {
   imageUrl?: string;
   modifiedTime?: string;
 };
+
+// 장소 상세 정보(detailPetTour2 + detailIntro2를 normalize한 결과)다.
+// 값이 없으면 undefined다. undefined인 항목은 "방문 전 확인 필요" 표시 대상이 된다.
+// 아래 값은 모두 자유 텍스트이므로 파싱하지 않고 문자열 그대로 보여준다.
+export type PlaceDetail = {
+  placeId: Place["id"];
+  // 동반 정보 (detailPetTour2)
+  acmpyTypeCd?: string;
+  acmpyPsblCpam?: string;
+  acmpyNeedMtr?: string;
+  etcAcmpyInfo?: string;
+  relaAcdntRiskMtr?: string;
+  // 운영시간, 쉬는 날 (detailIntro2, 타입별 필드명이 달라 하나로 모은다)
+  hours?: string;
+  rest?: string;
+};
