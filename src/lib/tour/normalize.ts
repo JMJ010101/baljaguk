@@ -1,4 +1,4 @@
-// 가정: 입력은 응답(response.body.items.item)에서 이미 꺼낸 item 한 건이다. items가 비었거나 오류인 경우는 client.ts에서 처리한다.
+// 가정: 상세 normalize의 입력은 응답(response.body.items.item)에서 이미 꺼낸 item 한 건이다. items가 비었거나 오류인 경우는 client.ts에서 처리한다.
 import { z } from "zod";
 import { AppError } from "@/lib/errors";
 import type { Place, PlaceDetail } from "@/types";
@@ -44,12 +44,73 @@ function emptyToUndefined(value: string | undefined): string | undefined {
   return value === undefined || value === "" ? undefined : value;
 }
 
+// 숫자로 온 문자열을 숫자로 바꾼다. 비어 있거나 변환 결과가 NaN이면 undefined다.
+function toNumber(value: string | undefined): number | undefined {
+  const text = emptyToUndefined(value);
+  if (text === undefined) return undefined;
+  const num = Number(text);
+  return Number.isNaN(num) ? undefined : num;
+}
+
+function invalidResponseError(): AppError {
+  return new AppError("API_FAILED", INVALID_RESPONSE_MESSAGE, INVALID_RESPONSE_STATUS);
+}
+
 function parseOrThrow<T extends z.ZodType>(schema: T, raw: unknown): z.infer<T> {
   const result = schema.safeParse(raw);
-  if (!result.success) {
-    throw new AppError("API_FAILED", INVALID_RESPONSE_MESSAGE, INVALID_RESPONSE_STATUS);
-  }
+  if (!result.success) throw invalidResponseError();
   return result.data;
+}
+
+// areaBasedList2 원본. 모두 문자열이고 값이 없으면 빈 문자열("")로 온다.
+// 필수는 contentid, contenttypeid, title뿐이다. 나머지는 선택이다.
+const placeListItemSchema = z.object({
+  contentid: z.string().min(1),
+  contenttypeid: z.string().min(1),
+  title: z.string().min(1),
+  addr1: z.string().optional(),
+  addr2: z.string().optional(),
+  areacode: z.string().optional(),
+  cat1: z.string().optional(),
+  cat2: z.string().optional(),
+  cat3: z.string().optional(),
+  createdtime: z.string().optional(),
+  firstimage: z.string().optional(),
+  firstimage2: z.string().optional(),
+  cpyrhtDivCd: z.string().optional(),
+  mapx: z.string().optional(),
+  mapy: z.string().optional(),
+  mlevel: z.string().optional(),
+  modifiedtime: z.string().optional(),
+  sigungucode: z.string().optional(),
+  tel: z.string().optional(),
+  zipcode: z.string().optional(),
+  lDongRegnCd: z.string().optional(),
+  lDongSignguCd: z.string().optional(),
+  lclsSystm1: z.string().optional(),
+  lclsSystm2: z.string().optional(),
+  lclsSystm3: z.string().optional(),
+});
+
+// 좌표가 없는 장소도 버리지 않는다. 제외 여부는 호출하는 쪽이 latitude/longitude 유무로 정한다.
+// mapx는 경도(longitude), mapy는 위도(latitude)다.
+export function normalizePlace(raw: unknown): Place {
+  const item = parseOrThrow(placeListItemSchema, raw);
+  const id = toNumber(item.contentid);
+  const contentTypeId = toNumber(item.contenttypeid);
+  if (id === undefined || contentTypeId === undefined) throw invalidResponseError();
+
+  return {
+    id,
+    contentTypeId,
+    title: item.title,
+    address: emptyToUndefined(item.addr1),
+    longitude: toNumber(item.mapx),
+    latitude: toNumber(item.mapy),
+    imageUrl: emptyToUndefined(item.firstimage),
+    imageCopyright: emptyToUndefined(item.cpyrhtDivCd),
+    modifiedTime: emptyToUndefined(item.modifiedtime),
+  };
 }
 
 export function normalizePlaceDetail(

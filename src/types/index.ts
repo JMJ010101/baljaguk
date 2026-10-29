@@ -9,6 +9,8 @@ export type Place = {
   longitude?: number;
   latitude?: number;
   imageUrl?: string;
+  // 이미지 저작권 구분(cpyrhtDivCd). 값을 그대로 보관만 한다.
+  imageCopyright?: string;
   modifiedTime?: string;
 };
 
