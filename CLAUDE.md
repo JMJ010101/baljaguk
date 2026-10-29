@@ -133,7 +133,14 @@ db/migrations/
 - 목록 응답에는 contentid, contenttypeid, title, addr1, mapx, mapy, firstimage, modifiedtime 등이 있다. 동반 조건과 운영시간은 목록에 없다.
   - 실제 호출로 확인한 목록 필드: addr1, addr2, areacode, cat1~cat3, contentid, contenttypeid, createdtime, firstimage, firstimage2, cpyrhtDivCd, mapx, mapy, mlevel, modifiedtime, sigungucode, tel, title, zipcode, lDongRegnCd, lDongSignguCd, lclsSystm1~lclsSystm3
   - showflag는 목록(areaBasedList2) 응답에 없다.
-  - 목록 호출(areaBasedList2)은 numOfRows, pageNo만 사용한다. TODO(확인 필요): 지역 코드, 정렬 파라미터는 매뉴얼 확인 후 추가한다.
+  - 목록 호출(areaBasedList2)은 numOfRows, pageNo와 선택 파라미터 contentTypeId(12, 14, 15, 28, 32, 38, 39만 허용), arrange(A, C, D, O, Q, R만 허용)를 쓴다. zod로 검증하고 위반하면 INVALID_INPUT(400)이다.
+  - totalCount (호출 결과로 확인함): 응답 body.totalCount는 contentTypeId 필터를 반영한다(파라미터 없음 9658, contentTypeId=12 753). numOfRows가 바뀌어도 변하지 않는다.
+  - contentTypeId=12, numOfRows=5에서 pageNo=151은 3건, 152는 0건이었다(753건과 일치). 파라미터 없는 호출의 마지막 페이지는 확인하지 못했다.
+  - 응답 body.numOfRows는 요청값이 아니라 실제 반환 건수로 온다(호출 결과로 확인함). 페이지 크기로 쓰지 않는다.
+  - arrange (호출 결과로 확인함, 매뉴얼에 기본값 설명은 없음): arrange=Q는 수정일 내림차순으로 정렬되었고 50건 중 firstimage가 없는 건이 0건이었다(파라미터 없는 호출은 4건). 매뉴얼 설명은 "대표이미지가 반드시 있는 정렬"이다. O, R은 호출해 본 적이 없다.
+  - arrange=Q에서도 totalCount는 줄지 않았다(9658). arrange가 O/Q/R일 때 totalCount로 페이지 수를 계산하지 않는다.
+  - 파라미터 없는 호출의 기본 정렬은 수정일 순서가 아니었다.
+  - 지역 파라미터 (매뉴얼 확인): areaCode가 아니라 lDongRegnCd(시도), lDongSignguCd(시군구, lDongRegnCd 필수), lclsSystm1~3이다. 코드 값 목록은 법정동 코드 조회 오퍼레이션(ldongCode2)을 확인해야 한다. TODO(확인 필요)
 - 동반 조건은 detailPetTour2(acmpyTypeCd, acmpyPsblCpam, acmpyNeedMtr, etcAcmpyInfo 등), 운영시간은 detailIntro2(타입별로 필드명이 다르다)로 장소마다 따로 조회해야 한다.
 - 운영시간 필드명은 타입마다 다르다. 쇼핑(38)은 opentime이고, 형식이 일정하지 않다(`09:00-20:00`, `09:00~22:00`). 파싱하지 말고 문자열 그대로 보여준다.
 - detailIntro2는 contentTypeId를 항상 함께 보낸다. contentTypeId는 필수다(매뉴얼 확인). (호출 결과로 확인함: 포함하면 4곳 모두 성공, 뺀 1곳은 정상 응답을 받지 못했다.)
@@ -152,6 +159,7 @@ db/migrations/
   - 값이 없으면 빈 문자열("")로 온다. normalize에서 undefined로 바꾼다.
   - mapx는 경도, mapy는 위도다(WGS84). 순서를 뒤집지 않는다.
   - 좌표가 없는 장소는 코스 후보에서 제외한다. (제안)
+  - 코스 후보에서 숙박(32)과 행사(15)는 제외한다. 장소 탐색 화면에는 그대로 보여준다.
   - petTourSyncList2를 쓰게 될 때만 showflag를 다룬다. (제안)
 - 원본 응답을 컴포넌트나 AI 프롬프트에 직접 넘기지 않는다.
 - 이미지의 cpyrhtDivCd가 Type3이면 변형(자르기, 필터 등)하지 않는다. 이미지에는 출처를 표시한다.
