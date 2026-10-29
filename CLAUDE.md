@@ -66,13 +66,16 @@ db/migrations/
 - 한 파일에 로직을 몰아넣지 않는다.
 
 ## 보안 규칙
-- OpenAI 키, 관광공사 API 키, Supabase service_role 키는 서버 코드에서만 사용한다.
+- OpenAI 키, 관광공사 API 키, Supabase secret 키(sb_secret_...)는 서버 코드에서만 사용한다.
 - 위 키에는 NEXT_PUBLIC_ 접두사를 절대 붙이지 않는다.
+- Supabase 환경변수 이름은 SUPABASE_URL, SUPABASE_SECRET_KEY다. 둘 다 NEXT_PUBLIC_ 접두사를 붙이지 않는다.
+- Supabase 공식 문서는 service_role 키가 레거시이며 2026년 말까지 폐지 예정이라고 안내한다.
+- publishable 키는 로그인을 만들기 전까지 쓰지 않는다. 브라우저에서 Supabase를 직접 호출하지 않는다.
 - 카카오 JavaScript 키는 브라우저에서 쓰는 키이므로 이 규칙의 예외다. 대신 JavaScript SDK 도메인 등록으로 사용 범위를 제한한다.
 - 카카오 REST API 키는 서버 전용이다. NEXT_PUBLIC_ 접두사를 붙이지 않는다.
 - .env* 파일은 커밋하지 않는다. .gitignore에 포함되어 있는지 가장 먼저 확인한다.
 - lib/db 안의 파일은 'server-only'를 import한다.
-- 모든 Supabase 테이블은 RLS를 켜둔 상태로 유지한다.
+- 모든 Supabase 테이블은 RLS를 켜둔 상태로 유지한다. secret 키는 RLS를 건너뛰지만 정책을 따로 만들지 않으므로, 접근은 서버(lib/db)에서만 된다.
 - IP는 원본이 아니라 해시해서 저장한다.
 - 키 값을 코드, 로그, 커밋 메시지에 직접 쓰지 않는다.
 
@@ -89,6 +92,9 @@ db/migrations/
   - place_cache: place_id(text, PK), data(jsonb, normalize된 Place), fetched_at, expires_at
   - usage_log: id, ip_hash(text), endpoint(text), created_at
 - 컬럼을 위 초안에 임의로 추가하지 않는다. 필요하면 새 마이그레이션 파일로 추가한다.
+- Supabase 무료 플랜 (2026-10-29 공식 문서 기준): DB 500MB, 활성 프로젝트 2개, 7일간 활동이 적으면 자동 일시 정지, 자동 백업 없음.
+- 일시 정지는 DB_UNAVAILABLE(DB 연결 실패 화면)으로 처리한다. keep-alive는 현재 범위 밖이므로 내가 정하기 전에는 만들지 않는다. README에 첫 접속 실패 가능성을 적는다. (제안)
+- TODO(확인 필요): 정지 후 복구 가능 기간. 공식 문서 버전마다 1년 / 90일로 다르게 적혀 있다.
 
 ## 오류 처리 규칙
 - 에러는 lib/errors.ts의 AppError(code, userMessage, status)로 통일한다.
@@ -102,6 +108,7 @@ db/migrations/
   - 05(서비스 연결실패) → API_TIMEOUT
   - 22(서비스 요청제한횟수 초과) → RATE_LIMIT. (초당 초과 코드 23은 공공데이터포털 안내 페이지에만 있고 매뉴얼에는 없다.)
   - 그 외 오류 → API_FAILED
+  - 오류 코드 비교는 숫자로 한다(05, 0005, 5를 같게). 실제 응답에서 어떤 형태로 오는지는 확인하지 못했다.
 - 공공데이터포털 오류 응답은 _type=json을 줘도 XML로만 나온다. JSON 파싱에 실패하면 XML 오류 본문(returnReasonCode)을 확인한 뒤 위 표대로 변환한다.
 - 사용자에게는 상황별 안내 문구를 보여준다.
 - 내부 에러 내용(스택, 원본 메시지)은 사용자에게 노출하지 않는다.
@@ -110,6 +117,7 @@ db/migrations/
 - 자체 호출 한도 (제안값, ip_hash 기준): 코스 생성 시간당 5회, 장소 조회 분당 30회
 - AI 응답 검증 실패 시 재시도는 최대 1회(총 2번 호출)로 제한한다. 그래도 실패하면 BAD_AI_RESPONSE를 던진다.
 - 관광공사 API 호출 실패는 자동 재시도하지 않는다. (호출 한도를 아끼기 위해)
+- 장소 목록 API Route: 목록 항목 하나의 normalize가 실패하면 그 항목만 건너뛰고 skipped 개수를 응답에 포함한다. 원본 응답과 키는 로그에 남기지 않는다. (제안)
 
 ## 외부 API 규칙 (한국관광공사, 활용매뉴얼 Ver4.1 기준)
 - 서비스: KorPetTourService2 / 기본 URL: apis.data.go.kr/B551011/KorPetTourService2 / REST(GET), 응답은 기본 XML이고 `_type=json`을 붙이면 JSON이다. HTTPS를 사용한다.
@@ -121,12 +129,13 @@ db/migrations/
 - 목록 응답에는 contentid, contenttypeid, title, addr1, mapx, mapy, firstimage, modifiedtime 등이 있다. 동반 조건과 운영시간은 목록에 없다.
   - 실제 호출로 확인한 목록 필드: addr1, addr2, areacode, cat1~cat3, contentid, contenttypeid, createdtime, firstimage, firstimage2, cpyrhtDivCd, mapx, mapy, mlevel, modifiedtime, sigungucode, tel, title, zipcode, lDongRegnCd, lDongSignguCd, lclsSystm1~lclsSystm3
   - showflag는 목록(areaBasedList2) 응답에 없다.
+  - 목록 호출(areaBasedList2)은 numOfRows, pageNo만 사용한다. TODO(확인 필요): 지역 코드, 정렬 파라미터는 매뉴얼 확인 후 추가한다.
 - 동반 조건은 detailPetTour2(acmpyTypeCd, acmpyPsblCpam, acmpyNeedMtr, etcAcmpyInfo 등), 운영시간은 detailIntro2(타입별로 필드명이 다르다)로 장소마다 따로 조회해야 한다.
 - 운영시간 필드명은 타입마다 다르다. 쇼핑(38)은 opentime이고, 형식이 일정하지 않다(`09:00-20:00`, `09:00~22:00`). 파싱하지 말고 문자열 그대로 보여준다.
 - detailIntro2는 contentTypeId를 항상 함께 보낸다. (호출 결과: 포함하면 4곳 모두 성공, 뺀 1곳은 정상 응답을 받지 못했다. 필수인지 매뉴얼로는 확인하지 못했다.)
 - detailIntro2 응답 필드는 타입마다 다르다. 호출 결과로 확인한 타입은 12, 32, 38, 39뿐이다. TODO(확인 필요): 28, 14, 15
-- 운영시간 필드(호출 결과로 본 이름, 의미는 매뉴얼 미확인): 12 usetime / 38 opentime / 39 opentimefood. 쉬는 날: 12 restdate / 38 restdateshopping / 39 restdatefood. 파싱하지 않고 문자열 그대로 보여준다.
-- chkpet, chkpetshopping은 비어 있었고 의미를 확인하지 못했다. 동반 조건에 쓰지 않는다.
+- 운영시간 필드(호출 결과로 본 이름, 의미는 매뉴얼 미확인): 12 usetime / 38 opentime / 39 opentimefood. 쉬는 날: 12 restdate / 38 restdateshopping / 39 restdatefood. 파싱하지 않고 문자열 그대로 보여준다. 12의 usetime에는 숙박 형태 문장이 들어 있는 경우가 있었다.
+- chkpet, chkpetshopping은 비어 있었고 의미를 확인하지 못했다. 동반 조건에 쓰지 않는다. 동반 정보 출처는 detailPetTour2뿐이다.
 - reservationurl 등에는 HTML 태그(`<a>`)가 섞여 있을 수 있다. 화면에 그대로 렌더링하지 않는다.
 - 위 동반 정보 필드는 모두 선택 항목이고 매뉴얼 예시상 자유 텍스트다. 값이 없으면 빈 문자열("")로 온다.
   - 실제 호출로 확인한 acmpyTypeCd 값(샘플 8곳): `전구역 동반가능`, `일부구역 동반가능`. 다른 값이 있는지는 TODO(확인 필요)
@@ -139,7 +148,7 @@ db/migrations/
   - 값이 없으면 빈 문자열("")로 온다. normalize에서 undefined로 바꾼다.
   - mapx는 경도, mapy는 위도다(WGS84). 순서를 뒤집지 않는다.
   - 좌표가 없는 장소는 코스 후보에서 제외한다. (제안)
-  - showflag=0(비표출) 장소는 사용하지 않는다. (제안, showflag는 petTourSyncList2 응답에 있는 항목이다.)
+  - petTourSyncList2를 쓰게 될 때만 showflag를 다룬다. (제안)
 - 원본 응답을 컴포넌트나 AI 프롬프트에 직접 넘기지 않는다.
 - 이미지의 cpyrhtDivCd가 Type3이면 변형(자르기, 필터 등)하지 않는다. 이미지에는 출처를 표시한다.
 - contentTypeId: 코드표는 12(관광지), 14(문화시설), 15(행사/공연/축제), 28(레포츠), 32(숙박), 38(쇼핑), 39(음식점)이다. 단, 목록·소개 조회의 파라미터 설명에는 75, 76 등 다른 값이 적혀 있어 문서가 서로 맞지 않는다.
