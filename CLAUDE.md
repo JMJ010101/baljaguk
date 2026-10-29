@@ -136,11 +136,11 @@ db/migrations/
   - 목록 호출(areaBasedList2)은 numOfRows, pageNo만 사용한다. TODO(확인 필요): 지역 코드, 정렬 파라미터는 매뉴얼 확인 후 추가한다.
 - 동반 조건은 detailPetTour2(acmpyTypeCd, acmpyPsblCpam, acmpyNeedMtr, etcAcmpyInfo 등), 운영시간은 detailIntro2(타입별로 필드명이 다르다)로 장소마다 따로 조회해야 한다.
 - 운영시간 필드명은 타입마다 다르다. 쇼핑(38)은 opentime이고, 형식이 일정하지 않다(`09:00-20:00`, `09:00~22:00`). 파싱하지 말고 문자열 그대로 보여준다.
-- detailIntro2는 contentTypeId를 항상 함께 보낸다. (호출 결과: 포함하면 4곳 모두 성공, 뺀 1곳은 정상 응답을 받지 못했다. 필수인지 매뉴얼로는 확인하지 못했다.)
+- detailIntro2는 contentTypeId를 항상 함께 보낸다. contentTypeId는 필수다(매뉴얼 확인). (호출 결과로 확인함: 포함하면 4곳 모두 성공, 뺀 1곳은 정상 응답을 받지 못했다.)
 - detailIntro2 응답 필드는 타입마다 다르다. 호출 결과로 확인한 타입은 12, 32, 38, 39뿐이다. TODO(확인 필요): 28, 14, 15
 - 운영시간 필드(호출 결과로 본 이름, 의미는 매뉴얼 미확인): 12 usetime / 38 opentime / 39 opentimefood. 쉬는 날: 12 restdate / 38 restdateshopping / 39 restdatefood. 파싱하지 않고 문자열 그대로 보여준다. 12의 usetime에는 숙박 형태 문장이 들어 있는 경우가 있었다.
 - chkpet, chkpetshopping은 비어 있었고 의미를 확인하지 못했다. 동반 조건에 쓰지 않는다. 동반 정보 출처는 detailPetTour2뿐이다.
-- reservationurl 등에는 HTML 태그(`<a>`)가 섞여 있을 수 있다. 화면에 그대로 렌더링하지 않는다.
+- reservationurl 등에는 HTML 태그(`<a>`)가 섞여 있을 수 있다. detailCommon2의 homepage에도 섞인 경우가 있었다(샘플 1곳). 화면에 그대로 렌더링하지 않는다.
 - 위 동반 정보 필드는 모두 선택 항목이고 매뉴얼 예시상 자유 텍스트다. 값이 없으면 빈 문자열("")로 온다.
   - 실제 호출로 확인한 acmpyTypeCd 값(샘플 8곳): `전구역 동반가능`, `일부구역 동반가능`. 다른 값이 있는지는 TODO(확인 필요)
   - 나머지 필드(acmpyPsblCpam, acmpyNeedMtr, etcAcmpyInfo, relaAcdntRiskMtr 등)는 장소마다 채워지는 항목이 다른 자유 텍스트다. 구역, 견종, 몸무게 조건이 여기에만 적혀 있다. etcAcmpyInfo에는 줄바꿈(\n)이 들어갈 수 있다.
@@ -160,7 +160,8 @@ db/migrations/
   - TODO(확인 필요): 14(문화시설), 15(행사/공연/축제)는 아직 확인하지 못했다.
 - 호출 한도: 개발계정은 일 1,000건이다. 장소 1곳의 동반 정보와 운영시간을 보려면 최소 2번(detailPetTour2, detailIntro2) 더 호출해야 하므로, 상세 조회는 후보로 좁혀진 장소에만 한다.
 - 상세 조회는 place_cache에 먼저 확인하고, 없거나 expires_at이 지났을 때만 외부 API를 호출한다.
-- TODO(확인 필요): 상세 화면을 주소로 직접 열 때 Place를 어디서 가져오는지. detailCommon2는 사용 오퍼레이션 목록에 있으나 호출해 본 적이 없어 응답 필드를 확인하지 못했다. 상세 화면 구현 시 정한다.
+- detailCommon2(공통정보)는 contentId만 보내 샘플 4곳(12, 32, 38, 39)에서 정상 응답을 받았다. 매뉴얼 확인(Ver4.1): 요청은 serviceKey, MobileOS, MobileApp, contentId가 필수이고 contentTypeId는 요청 항목에 없어 보내지 않는다. 호출 결과로 확인함: 12, 32, 39 세 곳에서 items.item은 길이 1의 배열이고, title, addr1, mapx, mapy, firstimage, cpyrhtDivCd는 세 곳 모두 값이 있었다(38은 getPlaceDetail로 normalizePlace 통과와 title, 좌표, 이미지, cpyrhtDivCd 값 유무만 확인했다). 목록 필드에 없는 것은 telname, homepage, overview다. tel, telname, addr2 등은 장소마다 비어 있었다. 필드명과 의미는 매뉴얼 확인. 단 cat1~3은 매뉴얼 응답 표에 없지만 실제 응답에는 온다(호출 결과로 확인함). 호출 결과로 확인함: normalizePlace가 detailCommon2 응답에 그대로 통했다(표본 4곳). 존재하지 않는 contentId는 오류가 아니라 resultCode 0000의 빈 items로 온다(getPlaceDetail의 404 처리 근거).
+- detailCommon2로 상세 화면의 Place를 만든다. 선택 항목(주소, 이미지, 좌표 등)은 비어 있을 수 있어 optional로 처리한다. 표본이 4곳이라 항상 값이 있다고 단정하지 않는다.
 - 캐시 만료 기간 (제안값): 24시간. 매뉴얼의 데이터 갱신주기가 일 1회다. (공공데이터포털 페이지에는 "실시간"이라고 적혀 있어 두 자료가 다르다.)
 
 ## 작업 방식
