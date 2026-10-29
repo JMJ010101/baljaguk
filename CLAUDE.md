@@ -123,11 +123,16 @@ db/migrations/
   - showflag는 목록(areaBasedList2) 응답에 없다.
 - 동반 조건은 detailPetTour2(acmpyTypeCd, acmpyPsblCpam, acmpyNeedMtr, etcAcmpyInfo 등), 운영시간은 detailIntro2(타입별로 필드명이 다르다)로 장소마다 따로 조회해야 한다.
 - 운영시간 필드명은 타입마다 다르다. 쇼핑(38)은 opentime이고, 형식이 일정하지 않다(`09:00-20:00`, `09:00~22:00`). 파싱하지 말고 문자열 그대로 보여준다.
+- detailIntro2는 contentTypeId를 항상 함께 보낸다. (호출 결과: 포함하면 4곳 모두 성공, 뺀 1곳은 정상 응답을 받지 못했다. 필수인지 매뉴얼로는 확인하지 못했다.)
+- detailIntro2 응답 필드는 타입마다 다르다. 호출 결과로 확인한 타입은 12, 32, 38, 39뿐이다. TODO(확인 필요): 28, 14, 15
+- 운영시간 필드(호출 결과로 본 이름, 의미는 매뉴얼 미확인): 12 usetime / 38 opentime / 39 opentimefood. 쉬는 날: 12 restdate / 38 restdateshopping / 39 restdatefood. 파싱하지 않고 문자열 그대로 보여준다.
+- chkpet, chkpetshopping은 비어 있었고 의미를 확인하지 못했다. 동반 조건에 쓰지 않는다.
+- reservationurl 등에는 HTML 태그(`<a>`)가 섞여 있을 수 있다. 화면에 그대로 렌더링하지 않는다.
 - 위 동반 정보 필드는 모두 선택 항목이고 매뉴얼 예시상 자유 텍스트다. 값이 없으면 빈 문자열("")로 온다.
   - 실제 호출로 확인한 acmpyTypeCd 값(샘플 8곳): `전구역 동반가능`, `일부구역 동반가능`. 다른 값이 있는지는 TODO(확인 필요)
   - 나머지 필드(acmpyPsblCpam, acmpyNeedMtr, etcAcmpyInfo, relaAcdntRiskMtr 등)는 장소마다 채워지는 항목이 다른 자유 텍스트다. 구역, 견종, 몸무게 조건이 여기에만 적혀 있다. etcAcmpyInfo에는 줄바꿈(\n)이 들어갈 수 있다.
   - hard 조건(제안): acmpyTypeCd 값이 있는 장소만 후보로 둔다. 구역, 견종, 몸무게 등 자유 텍스트 조건은 코드로 필터링하지 않고 soft 조건(AI 프롬프트)과 "방문 전 확인 필요" 안내로 처리한다.
-  - TODO(확인 필요): acmpyTypeCd가 비어 있는 장소가 실제로 있는지 확인
+  - acmpyTypeCd가 빈 장소: 샘플 8곳에서는 없었다. 전체는 TODO(확인 필요)
 - 응답에 없는 필드를 추측해서 쓰지 않는다. 필드를 쓰기 전에 매뉴얼을 확인한다.
 - 응답은 반드시 normalize 함수로 우리 Place 타입으로 변환한 뒤 사용한다.
   - 숫자도 문자열로 온다(contentid, mapx, mapy). normalize에서 숫자로 변환한다.
