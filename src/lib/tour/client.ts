@@ -97,7 +97,7 @@ async function requestTour(operation: string, params: Record<string, string>): P
 }
 
 // items.item은 단건이면 객체, 여러 건이면 배열로 온다.
-// TODO(확인 필요): 결과가 없는 정상 응답에서 items의 모양(빈 문자열 등)은 실제로 확인하지 못했다.
+// TODO(확인 필요): 결과가 없는 정상 응답에서 items의 모양(빈 문자열 등)은 기록하지 못했다. (존재하지 않는 contentId는 resultCode 0000의 빈 items로 오는 것을 호출 결과로 확인함)
 function extractItems(json: TourResponse): unknown[] {
   const items = json?.response?.body?.items;
   if (!items || typeof items !== "object") return [];
@@ -119,11 +119,17 @@ export async function fetchPetTourDetail(contentId: number): Promise<unknown[]> 
   return extractItems(json);
 }
 
-// contentTypeId를 항상 함께 보낸다. (뺀 호출은 정상 응답을 받지 못했다. 필수인지 매뉴얼로는 확인하지 못했다.)
+  // contentTypeId는 필수다(매뉴얼 확인). 항상 함께 보낸다. (호출 결과로 확인함: 뺀 호출은 정상 응답을 받지 못했다.)
 export async function fetchIntroDetail(contentId: number, contentTypeId: number): Promise<unknown[]> {
   const json = await requestTour("detailIntro2", {
     contentId: String(contentId),
     contentTypeId: String(contentTypeId),
   });
+  return extractItems(json);
+}
+
+// 공통정보(이름, 주소, 이미지, 좌표 등). 매뉴얼 Ver4.1상 요청은 contentId만 필요하고 contentTypeId는 요청 항목에 없다.
+export async function fetchCommonDetail(contentId: number): Promise<unknown[]> {
+  const json = await requestTour("detailCommon2", { contentId: String(contentId) });
   return extractItems(json);
 }
