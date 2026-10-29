@@ -50,10 +50,10 @@
 ```
 src/
 ├─ app/ (page.tsx, places/, places/[id]/, course/new/, course/[id]/, lab/, about/, error.tsx, not-found.tsx)
-├─ app/api/ (places/route.ts, course/route.ts)
+├─ app/api/ (places/route.ts, places/[id]/route.ts, course/route.ts)
 ├─ lib/
 │  ├─ ai/ (client.ts, parse.ts, prompts/)
-│  ├─ tour/ (client.ts, normalize.ts, places.ts)
+│  ├─ tour/ (client.ts, normalize.ts, places.ts, placeDetail.ts)
 │  ├─ db/ (client.ts, courses.ts, placeCache.ts, usage.ts)
 │  ├─ personas/ (index.ts, pet.ts)
 │  ├─ errors.ts, errorResponse.ts, rateLimit.ts
@@ -63,6 +63,7 @@ db/migrations/
 - route.ts는 얇게 유지한다. 로직은 lib/에 둔다.
 - lib/tour/: client.ts는 외부 API 호출, normalize.ts는 응답 변환만 담당한다.
 - places.ts는 둘을 엮어 목록을 만드는 서비스 함수다. 항목별 normalize 실패는 건너뛰고 skipped를 센다. 외부 호출이나 변환 로직을 places.ts에 직접 쓰지 않는다.
+- placeDetail.ts(상세)도 둘을 엮는 서비스 함수다. 외부 호출이나 변환 로직을 직접 쓰지 않는다. 흐름: 캐시 확인 → detailCommon2 → detailPetTour2와 detailIntro2(동시) → 저장.
 - db/migrations/ 에는 번호를 붙인 SQL 파일만 둔다.
 - 한 파일에 로직을 몰아넣지 않는다.
 
