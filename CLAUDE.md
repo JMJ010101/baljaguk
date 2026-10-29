@@ -91,7 +91,7 @@ db/migrations/
 - JSONB로 저장한 데이터는 읽을 때 zod로 다시 검증한다.
 - 컬럼 초안 (제안값, 첫 마이그레이션 작성 시 확정한다):
   - courses: id(uuid, PK), owner_id(uuid, NULL 허용), input(jsonb, 사용자 조건), result(jsonb, 순서가 있는 placeId 목록과 이유), prompt_version(text), created_at
-  - place_cache: place_id(text, PK), data(jsonb, normalize된 Place), fetched_at, expires_at
+  - place_cache: place_id(text, PK), data(jsonb, { place: Place, detail: PlaceDetail }), fetched_at, expires_at
   - usage_log: id, ip_hash(text), endpoint(text), created_at
 - 컬럼을 위 초안에 임의로 추가하지 않는다. 필요하면 새 마이그레이션 파일로 추가한다.
 - Supabase 무료 플랜 (2026-10-29 공식 문서 기준): DB 500MB, 활성 프로젝트 2개, 7일간 활동이 적으면 자동 일시 정지, 자동 백업 없음.
@@ -160,6 +160,7 @@ db/migrations/
   - TODO(확인 필요): 14(문화시설), 15(행사/공연/축제)는 아직 확인하지 못했다.
 - 호출 한도: 개발계정은 일 1,000건이다. 장소 1곳의 동반 정보와 운영시간을 보려면 최소 2번(detailPetTour2, detailIntro2) 더 호출해야 하므로, 상세 조회는 후보로 좁혀진 장소에만 한다.
 - 상세 조회는 place_cache에 먼저 확인하고, 없거나 expires_at이 지났을 때만 외부 API를 호출한다.
+- TODO(확인 필요): 상세 화면을 주소로 직접 열 때 Place를 어디서 가져오는지. detailCommon2는 사용 오퍼레이션 목록에 있으나 호출해 본 적이 없어 응답 필드를 확인하지 못했다. 상세 화면 구현 시 정한다.
 - 캐시 만료 기간 (제안값): 24시간. 매뉴얼의 데이터 갱신주기가 일 1회다. (공공데이터포털 페이지에는 "실시간"이라고 적혀 있어 두 자료가 다르다.)
 
 ## 작업 방식
