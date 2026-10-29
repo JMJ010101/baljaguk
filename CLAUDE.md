@@ -53,15 +53,16 @@ src/
 ├─ app/api/ (places/route.ts, course/route.ts)
 ├─ lib/
 │  ├─ ai/ (client.ts, parse.ts, prompts/)
-│  ├─ tour/ (client.ts, normalize.ts)
+│  ├─ tour/ (client.ts, normalize.ts, places.ts)
 │  ├─ db/ (client.ts, courses.ts, placeCache.ts, usage.ts)
 │  ├─ personas/ (index.ts, pet.ts)
-│  ├─ errors.ts, rateLimit.ts
+│  ├─ errors.ts, errorResponse.ts, rateLimit.ts
 └─ types/index.ts
 db/migrations/
 ```
 - route.ts는 얇게 유지한다. 로직은 lib/에 둔다.
-- lib/tour/ 는 외부 API 호출(client.ts)과 응답 변환(normalize.ts)만 담당한다.
+- lib/tour/: client.ts는 외부 API 호출, normalize.ts는 응답 변환만 담당한다.
+- places.ts는 둘을 엮어 목록을 만드는 서비스 함수다. 항목별 normalize 실패는 건너뛰고 skipped를 센다. 외부 호출이나 변환 로직을 places.ts에 직접 쓰지 않는다.
 - db/migrations/ 에는 번호를 붙인 SQL 파일만 둔다.
 - 한 파일에 로직을 몰아넣지 않는다.
 
@@ -81,6 +82,7 @@ db/migrations/
 
 ## DB 규칙
 - DB 접근은 lib/db 안의 함수로만 한다.
+- lib/db는 Supabase 오류를 DB_UNAVAILABLE AppError로 바꿔서 던진다.
 - 화면이나 API Route에서 쿼리를 직접 쓰지 않는다.
 - 스키마 변경은 db/migrations/ 에 번호를 붙인 새 SQL 파일로만 한다.
 - 기존 마이그레이션 파일은 수정하지 않는다.
@@ -112,6 +114,8 @@ db/migrations/
 - 공공데이터포털 오류 응답은 _type=json을 줘도 XML로만 나온다. JSON 파싱에 실패하면 XML 오류 본문(returnReasonCode)을 확인한 뒤 위 표대로 변환한다.
 - 사용자에게는 상황별 안내 문구를 보여준다.
 - 내부 에러 내용(스택, 원본 메시지)은 사용자에게 노출하지 않는다.
+- AppError가 아닌 예외는 errorResponse.ts에서 API_FAILED(500)로 응답한다. 별도 코드는 만들지 않는다. (제안) 서버 로그에는 예외 이름만 남긴다.
+- errorResponse.ts는 API Route에서 AppError를 { error: { code, message } } JSON 응답으로 바꿀 때 쓴다.
 - 아래 상태 화면을 모두 구현한다.
   - 로딩, 빈 결과, API 실패, 호출 한도 초과, 코스 생성 실패, 유효하지 않은 링크, DB 연결 실패
 - 자체 호출 한도 (제안값, ip_hash 기준): 코스 생성 시간당 5회, 장소 조회 분당 30회
