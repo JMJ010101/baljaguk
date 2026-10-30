@@ -3,7 +3,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { AppError } from "@/lib/errors";
-import { enforceRateLimit, type RateLimitDeps, type RateLimitPolicy } from "@/lib/rateLimit";
+import {
+  COURSE_RATE_POLICY,
+  enforceRateLimit,
+  PLACES_RATE_POLICY,
+  type RateLimitDeps,
+  type RateLimitPolicy,
+} from "@/lib/rateLimit";
 
 const NOW = 1_700_000_000_000;
 const HOUR = 3_600_000;
@@ -12,6 +18,7 @@ const policy: RateLimitPolicy = {
   endpoint: "test",
   perIp: { limit: 5, windowMs: HOUR },
   global: { limit: 20, windowMs: DAY },
+  messages: { perIp: "IP별 문구", global: "전체 문구" },
 };
 
 function fakeDeps(counts: { ip: number; global: number }, failOn?: "count" | "record") {
@@ -37,6 +44,15 @@ async function codeOf(promise: Promise<unknown>): Promise<string> {
     return "no-error";
   } catch (e) {
     return e instanceof AppError ? `${e.code}/${e.status}` : `예상 밖 오류: ${String(e)}`;
+  }
+}
+
+async function messageOf(promise: Promise<unknown>): Promise<string | undefined> {
+  try {
+    await promise;
+    return undefined;
+  } catch (e) {
+    return e instanceof AppError ? e.userMessage : undefined;
   }
 }
 
@@ -67,9 +83,37 @@ test("전체 개수가 한도에 닿으면 RATE_LIMIT 429이고 기록하지 않
   assert.equal(log.records.length, 0);
 });
 
+test("IP 한도와 전체 한도를 넘으면 각각 정책의 문구로 거절한다", async () => {
+  const ip = fakeDeps({ ip: 5, global: 0 });
+  assert.equal(await messageOf(enforceRateLimit({ ipHash: "h", policy }, ip.deps)), "IP별 문구");
+  const global = fakeDeps({ ip: 0, global: 20 });
+  assert.equal(await messageOf(enforceRateLimit({ ipHash: "h", policy }, global.deps)), "전체 문구");
+});
+
+test("실제 정책(코스, 장소)의 문구는 서로 다르고 한도 수치와 시점(내일)을 넣지 않는다", () => {
+  for (const actual of [COURSE_RATE_POLICY, PLACES_RATE_POLICY]) {
+    assert.notEqual(actual.messages.perIp, actual.messages.global);
+    for (const message of [actual.messages.perIp, actual.messages.global]) {
+      assert.doesNotMatch(message, /\d/, `문구에 숫자가 있음: ${message}`);
+      assert.doesNotMatch(message, /내일/, `문구에 "내일"이 있음: ${message}`);
+    }
+  }
+  assert.match(COURSE_RATE_POLICY.messages.global, /코스/);
+  assert.match(PLACES_RATE_POLICY.messages.global, /장소/);
+  assert.doesNotMatch(PLACES_RATE_POLICY.messages.global, /코스/);
+});
+
+test("실제 정책의 한도 값: 코스 시간당 5회·하루 20건, 장소 분당 30회·하루 150요청", () => {
+  assert.deepEqual(COURSE_RATE_POLICY.perIp, { limit: 5, windowMs: HOUR });
+  assert.deepEqual(COURSE_RATE_POLICY.global, { limit: 20, windowMs: DAY });
+  assert.deepEqual(PLACES_RATE_POLICY.perIp, { limit: 30, windowMs: 60_000 });
+  assert.deepEqual(PLACES_RATE_POLICY.global, { limit: 150, windowMs: DAY });
+  assert.notEqual(COURSE_RATE_POLICY.endpoint, PLACES_RATE_POLICY.endpoint);
+});
+
 test("한도 인자가 0이면 개수가 0이어도 항상 거절하고 기록하지 않는다", async () => {
   const { deps, log } = fakeDeps({ ip: 0, global: 0 });
-  const zero: RateLimitPolicy = { endpoint: "test", perIp: { limit: 0, windowMs: HOUR } };
+  const zero: RateLimitPolicy = { ...policy, perIp: { limit: 0, windowMs: HOUR } };
   assert.equal(await codeOf(enforceRateLimit({ ipHash: "h", policy: zero }, deps)), "RATE_LIMIT/429");
   assert.equal(log.records.length, 0);
   const zeroGlobal: RateLimitPolicy = { ...policy, global: { limit: 0, windowMs: DAY } };
@@ -79,7 +123,7 @@ test("한도 인자가 0이면 개수가 0이어도 항상 거절하고 기록�
 
 test("전체 한도가 없는 정책은 IP 개수만 센다", async () => {
   const { deps, log } = fakeDeps({ ip: 0, global: 999 });
-  await enforceRateLimit({ ipHash: "h", policy: { endpoint: "test", perIp: policy.perIp } }, deps);
+  await enforceRateLimit({ ipHash: "h", policy: { ...policy, global: undefined } }, deps);
   assert.equal(log.counts.length, 1);
   assert.equal(log.records.length, 1);
 });

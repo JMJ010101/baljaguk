@@ -13,20 +13,46 @@ const MINUTE_MS = 60 * 1000;
 const HOUR_MS = 60 * MINUTE_MS;
 const DAY_MS = 24 * HOUR_MS;
 const RATE_LIMIT_STATUS = 429;
-const IP_LIMIT_MESSAGE = "요청이 너무 많아요. 잠시 후 다시 시도해 주세요.";
-const GLOBAL_LIMIT_MESSAGE = "오늘 만들 수 있는 코스 수를 넘었어요. 내일 다시 시도해 주세요.";
 
 export type LimitRule = { limit: number; windowMs: number };
 
-// global을 빼면 IP별 한도만 적용한다.
-export type RateLimitPolicy = { endpoint: string; perIp: LimitRule; global?: LimitRule };
+// global을 빼면 IP별 한도만 적용한다. messages는 한도를 넘었을 때 화면에 보여 줄 문구다.
+// 문구에는 한도 수치를 넣지 않는다. 하루 한도는 달력 날짜가 아니라 최근 24시간 창이라 "내일"처럼 시점을 특정하지 않는다.
+export type RateLimitPolicy = {
+  endpoint: string;
+  perIp: LimitRule;
+  global?: LimitRule;
+  messages: { perIp: string; global: string };
+};
 
+// 전체 하루 한도의 단위는 "관광공사를 실제로 부르는 API 요청 수"다. usage_log 한 행이 요청 1건이다.
+// 관광공사 한도: 포털에서 기능별로 일일 트래픽 1000이 표시됨, 기능별인지 합산인지 확인 필요.
+// 합산 가정으로 보수적 값, 배포 후 사용량을 보고 조정. (코스 하루 20건 x 최대 21번 + 장소 하루 150요청 x 최대 3번 = 최대 870번)
 export const COURSE_RATE_POLICY: RateLimitPolicy = {
   endpoint: "course",
   // 시간당 5회 (CLAUDE.md 제안값)
   perIp: { limit: 5, windowMs: HOUR_MS },
-  // 임시값, 관광공사 한도 확인 전. 코스 1건이 관광공사를 최대 21번 부른다.
+  // 임시값. 코스 1건이 관광공사를 최대 21번 부른다. 위 주석의 한도 확인 필요 사항이 적용된다.
   global: { limit: 20, windowMs: DAY_MS },
+  messages: {
+    perIp: "코스 만들기 요청이 많아요. 잠시 후 다시 시도해 주세요.",
+    global: "오늘 만들 수 있는 코스 수를 넘었어요. 시간이 조금 지난 뒤 다시 시도해 주세요.",
+  },
+};
+
+// 장소 API(목록, 지역, 상세)가 한 통을 같이 쓴다. 관광공사를 실제로 부를 때만 센다.
+// 한 요청이 관광공사를 부르는 횟수: 목록 1, 지역 1, 상세 3(캐시 미스). 하루 150요청이면 최대 450번이다.
+export const PLACES_RATE_POLICY: RateLimitPolicy = {
+  endpoint: "places",
+  // 분당 30회 (CLAUDE.md 제안값)
+  perIp: { limit: 30, windowMs: MINUTE_MS },
+  // 임시값. 관광공사 한도: 포털에서 기능별로 일일 트래픽 1000이 표시됨, 기능별인지 합산인지 확인 필요.
+  // 합산 가정으로 보수적 값, 배포 후 사용량을 보고 조정.
+  global: { limit: 150, windowMs: DAY_MS },
+  messages: {
+    perIp: "장소 조회 요청이 많아요. 잠시 후 다시 시도해 주세요.",
+    global: "오늘 장소 조회 가능 횟수를 넘었어요. 시간이 조금 지난 뒤 다시 시도해 주세요.",
+  },
 };
 
 export type RateLimitDeps = {
@@ -58,9 +84,9 @@ export async function enforceRateLimit(
       : deps.countUsage({ endpoint: policy.endpoint, sinceMs: now - policy.global.windowMs }, { timeoutMs: countMs }),
   ]);
 
-  if (ipCount >= policy.perIp.limit) throw rateLimitError(IP_LIMIT_MESSAGE);
+  if (ipCount >= policy.perIp.limit) throw rateLimitError(policy.messages.perIp);
   if (policy.global !== undefined && globalCount !== undefined && globalCount >= policy.global.limit) {
-    throw rateLimitError(GLOBAL_LIMIT_MESSAGE);
+    throw rateLimitError(policy.messages.global);
   }
 
   const recordMs = stepTimeoutMs(DB_TIMEOUT_MS, deadlineAt);
