@@ -20,6 +20,12 @@ export type Region = {
   name: string;
 };
 
+// 장소 탐색 화면이 받는 시도 목록의 상태다. 오류 내용은 담지 않는다.
+export type SidoListState =
+  | { status: "ok"; regions: Region[] }
+  | { status: "empty" }
+  | { status: "error" };
+
 // 장소 상세 정보(detailPetTour2 + detailIntro2를 normalize한 결과)다.
 // 값이 없으면 undefined다. undefined인 항목은 "방문 전 확인 필요" 표시 대상이 된다.
 // 아래 값은 모두 자유 텍스트이므로 파싱하지 않고 문자열 그대로 보여준다.
