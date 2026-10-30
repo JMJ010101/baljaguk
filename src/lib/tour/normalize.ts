@@ -18,25 +18,37 @@ const petTourSchema = z.object({
 // detailIntro2 원본. 필드명이 타입마다 달라 운영시간·쉬는 날 후보만 정의하고 나머지는 무시한다.
 const introSchema = z.object({
   usetime: z.string().optional(),
+  usetimeculture: z.string().optional(),
+  usetimeleports: z.string().optional(),
   opentime: z.string().optional(),
   opentimefood: z.string().optional(),
   restdate: z.string().optional(),
+  restdateculture: z.string().optional(),
+  restdateleports: z.string().optional(),
   restdateshopping: z.string().optional(),
   restdatefood: z.string().optional(),
 });
 
 type IntroKey = keyof z.infer<typeof introSchema>;
 
-// contentTypeId별 운영시간/쉬는 날 필드명. 호출 결과로 본 이름이고 의미는 매뉴얼로 확인하지 못했다.
-// TODO(확인 필요): 28, 32, 14, 15 등 나머지 타입의 필드명
+// contentTypeId별 운영시간/쉬는 날 필드명이다. 매뉴얼(Ver4.1 소개정보 조회)의 이름이고, 의미(이용시간/영업시간, 쉬는 날)도 매뉴얼에 있다.
+// 12, 38, 39는 호출 결과로 확인했다. 14, 28도 각 1곳씩 호출해 이 필드가 값과 함께 오는 것을 확인했다(2026-10-30). 다른 장소는 확인하지 못했다.
+// 15(행사: 행사 시작일/종료일, 공연시간, 이용요금)와 32(숙박: 입실/퇴실 시간)는 이용시간·쉬는 날 개념이 달라 매핑하지 않는다.
 const INTRO_KEYS: Partial<Record<number, { hoursKey: IntroKey; restKey: IntroKey }>> = {
   12: { hoursKey: "usetime", restKey: "restdate" },
+  14: { hoursKey: "usetimeculture", restKey: "restdateculture" },
+  28: { hoursKey: "usetimeleports", restKey: "restdateleports" },
   38: { hoursKey: "opentime", restKey: "restdateshopping" },
   39: { hoursKey: "opentimefood", restKey: "restdatefood" },
 };
 
 export function getIntroKeys(contentTypeId: number) {
   return INTRO_KEYS[contentTypeId];
+}
+
+// 운영시간·쉬는 날을 읽는 타입인지다. false이면 화면에서 이 항목의 행을 보여주지 않는다. ("정보 없음"과 다르다.)
+export function supportsOperatingInfo(contentTypeId: number): boolean {
+  return INTRO_KEYS[contentTypeId] !== undefined;
 }
 
 // 빈 문자열은 undefined로 바꾼다.

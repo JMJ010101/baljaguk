@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { AppError } from "@/lib/errors";
 import { toErrorResponse } from "@/lib/errorResponse";
+import { SIDO_CODE_PATTERN } from "@/lib/placesQuery";
 import { CONTENT_TYPE_IDS } from "@/lib/tour/contentTypes";
 import { getPlaces } from "@/lib/tour/places";
-import { SIDO_CODE_PATTERN } from "@/lib/tour/regions";
 
 const DEFAULT_NUM_OF_ROWS = 20;
 const MAX_NUM_OF_ROWS = 50;

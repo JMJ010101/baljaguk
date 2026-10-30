@@ -1,12 +1,12 @@
 import { z } from "zod";
 import { AppError } from "@/lib/errors";
 import { toErrorResponse } from "@/lib/errorResponse";
+import { SIDO_CODE_PATTERN } from "@/lib/placesQuery";
 import {
   getSidoList,
   getSigunguList,
   INVALID_INPUT_MESSAGE,
   INVALID_INPUT_STATUS,
-  SIDO_CODE_PATTERN,
 } from "@/lib/tour/regions";
 
 // sido가 없으면 시도 목록이고, 있으면 1~5자리 숫자 문자열이어야 한다. 빈 값도 오류다.

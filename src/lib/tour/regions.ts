@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { AppError } from "@/lib/errors";
+import { SIDO_CODE_PATTERN } from "@/lib/placesQuery";
 import { fetchLdongCodes } from "@/lib/tour/client";
 import type { Region } from "@/types";
 
@@ -12,8 +13,6 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 // 시군구가 가장 많은 시도가 55개(2026-10-30 호출 결과)라 한 번에 받는다.
 const NUM_OF_ROWS = 100;
 const FIRST_PAGE = 1;
-// 세종특별자치시의 시도 코드가 5자리(36110)라 1~5자리 숫자를 허용한다. route.ts도 이 값을 쓴다.
-export const SIDO_CODE_PATTERN = /^\d{1,5}$/;
 export const INVALID_INPUT_MESSAGE = "요청 값이 올바르지 않아요. 다시 확인해 주세요.";
 export const INVALID_INPUT_STATUS = 400;
 const NOT_FOUND_STATUS = 404;
