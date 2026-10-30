@@ -12,13 +12,7 @@ export const maxDuration = 90;
 const INVALID_INPUT_MESSAGE = "요청 값이 올바르지 않아요. 다시 확인해 주세요.";
 const INVALID_INPUT_STATUS = 400;
 
-// 임시 안전장치다. 호출 한도(rateLimit)가 들어가기 전까지 이 route는 환경변수 COURSE_API_ENABLED가 "true"일 때만 동작한다.
-// 기본은 꺼짐이고 Vercel 환경변수에는 넣지 않는다. 로컬에서 확인할 때만 켠다. 단계 4에서 rateLimit을 넣을 때 이 안전장치를 제거한다.
-const ENABLED_VALUE = "true";
-
 export async function POST(request: Request) {
-  if (process.env.COURSE_API_ENABLED !== ENABLED_VALUE) return new Response(null, { status: 404 });
-
   const deadlineAt = Date.now() + COURSE_BUDGET_MS;
   try {
     let body: unknown;
