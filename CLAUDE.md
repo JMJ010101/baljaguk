@@ -58,7 +58,7 @@ src/
 │  ├─ course/ (assemble.ts, constants.ts, distance.ts, generate.ts, input.ts, size.ts, types.ts)
 │  ├─ db/ (client.ts, courses.ts, errors.ts, placeCache.ts, usage.ts)
 │  ├─ personas/ (index.ts, pet.ts)
-│  ├─ errors.ts, errorResponse.ts, deadline.ts, placeId.ts, placesQuery.ts, rateLimit.ts
+│  ├─ errors.ts, errorResponse.ts, clientIp.ts, deadline.ts, placeId.ts, placesQuery.ts, rateLimit.ts
 └─ types/index.ts
 db/migrations/
 ```
@@ -77,7 +77,7 @@ db/migrations/
 ## 보안 규칙
 - OpenAI 키, 관광공사 API 키, Supabase secret 키(sb_secret_...)는 서버 코드에서만 사용한다.
 - 위 키에는 NEXT_PUBLIC_ 접두사를 절대 붙이지 않는다.
-- 서버에서 읽는 환경변수 이름은 SUPABASE_URL, SUPABASE_SECRET_KEY, TOUR_API_KEY, OPENAI_API_KEY다. 모두 NEXT_PUBLIC_ 접두사를 붙이지 않는다.
+- 서버에서 읽는 환경변수 이름은 SUPABASE_URL, SUPABASE_SECRET_KEY, TOUR_API_KEY, OPENAI_API_KEY, RATE_LIMIT_SALT다. 모두 NEXT_PUBLIC_ 접두사를 붙이지 않는다.
 - Supabase는 secret 키(sb_secret_...)를 쓴다. 레거시 service_role 키는 쓰지 않는다.
 - publishable 키는 로그인을 만들기 전까지 쓰지 않는다. 브라우저에서 Supabase를 직접 호출하지 않는다.
 - 카카오 JavaScript 키는 브라우저에서 쓰는 키이므로 이 규칙의 예외다. 대신 JavaScript SDK 도메인 등록으로 사용 범위를 제한한다.
@@ -127,7 +127,9 @@ db/migrations/
 - errorResponse.ts는 API Route에서 AppError를 { error: { code, message } } JSON 응답으로 바꿀 때 쓴다.
 - 아래 상태 화면을 모두 구현한다.
   - 로딩, 빈 결과, API 실패, 호출 한도 초과, 코스 생성 실패, 유효하지 않은 링크, DB 연결 실패
-- 자체 호출 한도 (제안값, ip_hash 기준): 코스 생성 시간당 5회, 장소 조회 분당 30회
+- 자체 호출 한도 (제안값, ip_hash 기준): 코스 생성 시간당 5회, 장소 조회 분당 30회. 코스에는 전체 하루 한도도 있다(임시값 하루 20건, 관광공사 한도 확인 전).
+  - 개수를 센 뒤 허용된 요청만 usage_log에 기록하고, 거절된 요청과 입력 검증에 실패한 요청은 기록하지 않는다.
+  - 한도 조회나 기록이 DB 오류이면 통과시키지 않고 DB_UNAVAILABLE이다. 한도 값은 rateLimit 함수의 정책 인자로 받는다.
 - AI 응답 검증 실패 시 재시도는 최대 1회(총 2번 호출)로 제한한다. 그래도 실패하면 BAD_AI_RESPONSE를 던진다.
 - 관광공사 API 호출 실패는 자동 재시도하지 않는다. (호출 한도를 아끼기 위해)
 - 장소 목록 API Route: 목록 항목 하나의 normalize가 실패하면 그 항목만 건너뛰고 skipped 개수를 응답에 포함한다. 원본 응답과 키는 로그에 남기지 않는다. (제안)
