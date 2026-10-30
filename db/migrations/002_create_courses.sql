@@ -18,4 +18,5 @@ revoke all on table public.courses from anon, authenticated;
 
 -- 새 테이블에는 API 역할 권한이 자동으로 붙지 않을 수 있어 같은 파일에서 명시적으로 부여한다.
 -- 이 범위에는 수정과 삭제가 없어서 select, insert만 준다.
+revoke all on table public.courses from service_role;
 grant select, insert on table public.courses to service_role;
