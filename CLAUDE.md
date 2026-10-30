@@ -49,14 +49,15 @@
 ## 폴더 구조
 ```
 src/
-├─ app/ (page.tsx, places/, places/[id]/, course/new/, course/[id]/, lab/, about/, error.tsx, not-found.tsx)
+├─ app/ (page.tsx, places/page.tsx, places/[id]/, course/new/, course/[id]/, lab/, about/, error.tsx, not-found.tsx)
 ├─ app/api/ (places/route.ts, places/[id]/route.ts, regions/route.ts, course/route.ts)
+├─ components/ (Button.tsx, Header.tsx, Pagination.tsx, PlaceCard.tsx, PlaceThumbnail.tsx, StatusScreen.tsx, Tag.tsx, VisitCheckNotice.tsx, places/PlacesExplorer.tsx, places/PlacesStatus.tsx)
 ├─ lib/
 │  ├─ ai/ (client.ts, parse.ts, prompts/)
-│  ├─ tour/ (client.ts, normalize.ts, places.ts, placeDetail.ts, regions.ts)
+│  ├─ tour/ (client.ts, normalize.ts, places.ts, placeDetail.ts, regions.ts, contentTypes.ts)
 │  ├─ db/ (client.ts, courses.ts, placeCache.ts, usage.ts)
 │  ├─ personas/ (index.ts, pet.ts)
-│  ├─ errors.ts, errorResponse.ts, rateLimit.ts
+│  ├─ errors.ts, errorResponse.ts, placesQuery.ts, rateLimit.ts
 └─ types/index.ts
 db/migrations/
 ```
@@ -66,6 +67,8 @@ db/migrations/
 - placeDetail.ts(상세)는 client.ts, normalize.ts, lib/db/placeCache.ts를 엮는 서비스 함수다. 외부 호출, 변환, 쿼리 로직을 직접 쓰지 않는다. 흐름: 캐시 확인(placeCache) → detailCommon2 → detailPetTour2와 detailIntro2(동시) → 캐시 저장(placeCache).
 - regions.ts(지역)는 client.ts의 fetchLdongCodes(ldongCode2 호출)로 시도·시군구 목록을 만드는 서비스 함수다. getSidoList(), getSigunguList(sidoCode)를 제공하고, 항목은 types/index.ts의 Region({ code, name })으로 검증하며 실패한 항목은 건너뛰고 skipped를 센다. sido 검증 패턴은 1~5자리 숫자이고, 시군구 결과가 비면 INVALID_INPUT 404를 던진다.
 - app/api/regions/route.ts: GET /api/regions는 시도 목록, GET /api/regions?sido=11은 그 시도의 시군구 목록이다. sido가 패턴에 맞지 않으면 INVALID_INPUT 400이다.
+- 장소 탐색 화면(app/places/page.tsx)은 서버 컴포넌트에서 getSidoList()로 시도 목록을 가져와 클라이언트 컴포넌트(PlacesExplorer)에 내려 주고, 장소 목록은 선택 값이 바뀔 때 /api/places를 호출한다. 선택 값은 URL 쿼리(?sido=&type=&page=)에 둔다. 기본값(type=12, page=1)은 URL에서 생략하고, 한 페이지는 PAGE_SIZE=20(lib/placesQuery.ts)이다. 허용 타입과 이름은 lib/tour/contentTypes.ts 한 곳에서 정의한다.
+- 장소 카드(PlaceCard)에는 "방문 전 확인 필요"를 넣지 않는다. 카드는 동반 조건이나 영업시간을 보여 주지 않기 때문이다. 상세 화면에서 쓴다.
 - db/migrations/ 에는 번호를 붙인 SQL 파일만 둔다.
 - 한 파일에 로직을 몰아넣지 않는다.
 
