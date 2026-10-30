@@ -9,7 +9,7 @@
 ## 기술 스택
 - Next.js 16.4.3 (App Router) + React 19.3.0 + TypeScript, Vercel 배포
 - 스타일: Tailwind CSS v4 (package.json에 이미 설치되어 있다)
-- 아직 설치되지 않은 패키지는 OpenAI SDK뿐이다. AI 연동 기능을 구현할 때 설치한다. 나머지 의존성은 package.json을 따른다.
+- 추가로 설치할 패키지는 없다. OpenAI는 SDK 없이 fetch로 호출한다.
 - DB: Supabase (Postgres)
 - AI: OpenAI API / 모델명: gpt-6-luna로 정함(사용자 결정). 가격, 구조화 출력, 추론 설정은 확인 필요
 - 모델명은 한 곳(상수 또는 환경변수)에서만 정의한다. 프롬프트 버전을 비교할 때는 같은 모델로 비교한다.
@@ -53,7 +53,7 @@ src/
 ├─ app/api/ (places/route.ts, places/[id]/route.ts, regions/route.ts, course/route.ts)
 ├─ components/ (Button.tsx, Header.tsx, Pagination.tsx, PlaceCard.tsx, PlaceImage.tsx, RefreshButton.tsx, StatusScreen.tsx, Tag.tsx, VisitCheckNotice.tsx, places/InfoRow.tsx, places/InfoSection.tsx, places/PlaceDetailStatus.tsx, places/PlaceDetailView.tsx, places/PlacesExplorer.tsx, places/PlacesStatus.tsx)
 ├─ lib/
-│  ├─ ai/ (client.ts, parse.ts, prompts/)
+│  ├─ ai/ (client.ts, parse.ts, picks.ts, constants.ts, types.ts, prompts/)
 │  ├─ tour/ (client.ts, normalize.ts, places.ts, placeDetail.ts, regions.ts, contentTypes.ts, candidates.ts)
 │  ├─ course/ (constants.ts, distance.ts, size.ts, types.ts)
 │  ├─ db/ (client.ts, courses.ts, placeCache.ts, usage.ts)
@@ -77,7 +77,7 @@ db/migrations/
 ## 보안 규칙
 - OpenAI 키, 관광공사 API 키, Supabase secret 키(sb_secret_...)는 서버 코드에서만 사용한다.
 - 위 키에는 NEXT_PUBLIC_ 접두사를 절대 붙이지 않는다.
-- 서버에서 읽는 환경변수 이름은 SUPABASE_URL, SUPABASE_SECRET_KEY, TOUR_API_KEY다. 모두 NEXT_PUBLIC_ 접두사를 붙이지 않는다.
+- 서버에서 읽는 환경변수 이름은 SUPABASE_URL, SUPABASE_SECRET_KEY, TOUR_API_KEY, OPENAI_API_KEY다. 모두 NEXT_PUBLIC_ 접두사를 붙이지 않는다.
 - Supabase는 secret 키(sb_secret_...)를 쓴다. 레거시 service_role 키는 쓰지 않는다.
 - publishable 키는 로그인을 만들기 전까지 쓰지 않는다. 브라우저에서 Supabase를 직접 호출하지 않는다.
 - 카카오 JavaScript 키는 브라우저에서 쓰는 키이므로 이 규칙의 예외다. 대신 JavaScript SDK 도메인 등록으로 사용 범위를 제한한다.
@@ -182,7 +182,7 @@ db/migrations/
 - contentTypeId: 코드표는 12(관광지), 14(문화시설), 15(행사/공연/축제), 28(레포츠), 32(숙박), 38(쇼핑), 39(음식점)이다. 단, 목록·소개 조회의 파라미터 설명에는 75, 76 등 다른 값이 적혀 있어 문서가 서로 맞지 않는다.
   - 실제 호출 결과 12, 28, 32, 38, 39가 나왔고 75, 76은 나오지 않았다. 코드표(12 계열)를 따른다. 75, 76으로 직접 호출해 보지는 않았다.
   - TODO(확인 필요): 14(문화시설), 15(행사/공연/축제)는 아직 확인하지 못했다.
-- 호출 한도: 개발계정은 일 1,000건이다. 장소 1곳의 동반 정보와 운영시간을 보려면 최소 2번(detailPetTour2, detailIntro2) 더 호출해야 하므로, 상세 조회는 후보로 좁혀진 장소에만 한다.
+- 호출 한도: 개발계정은 일 1,000건이다(출처 확인 필요). 장소 1곳의 동반 정보와 운영시간을 보려면 캐시에 없으면 3번(detailCommon2, detailPetTour2, detailIntro2) 호출해야 하므로, 상세 조회는 후보로 좁혀진 장소에만 한다.
 - 상세 조회는 place_cache에 먼저 확인하고, 없거나 expires_at이 지났을 때만 외부 API를 호출한다.
 - detailCommon2(공통정보)는 contentId만 보내 샘플 4곳(12, 32, 38, 39)에서 정상 응답을 받았다. 매뉴얼 확인(Ver4.1): 요청은 serviceKey, MobileOS, MobileApp, contentId가 필수이고 contentTypeId는 요청 항목에 없어 보내지 않는다. 호출 결과로 확인함: 12, 32, 39 세 곳에서 items.item은 길이 1의 배열이고, title, addr1, mapx, mapy, firstimage, cpyrhtDivCd는 세 곳 모두 값이 있었다(38은 getPlaceDetail로 normalizePlace 통과와 title, 좌표, 이미지, cpyrhtDivCd 값 유무만 확인했다). 목록 필드에 없는 것은 telname, homepage, overview다. tel, telname, addr2 등은 장소마다 비어 있었다. 필드명과 의미는 매뉴얼 확인. 단 cat1~3은 매뉴얼 응답 표에 없지만 실제 응답에는 온다(호출 결과로 확인함). 호출 결과로 확인함: normalizePlace가 detailCommon2 응답에 그대로 통했다(표본 4곳). 존재하지 않는 contentId는 오류가 아니라 resultCode 0000의 빈 items로 온다(getPlaceDetail의 404 처리 근거).
 - detailCommon2로 상세 화면의 Place를 만든다. 선택 항목(주소, 이미지, 좌표 등)은 비어 있을 수 있어 optional로 처리한다. 표본이 4곳이라 항상 값이 있다고 단정하지 않는다.
