@@ -127,7 +127,7 @@ db/migrations/
 - errorResponse.ts는 API Route에서 AppError를 { error: { code, message } } JSON 응답으로 바꿀 때 쓴다.
 - 아래 상태 화면을 모두 구현한다.
   - 로딩, 빈 결과, API 실패, 호출 한도 초과, 코스 생성 실패, 유효하지 않은 링크, DB 연결 실패
-- 자체 호출 한도 (제안값, ip_hash 기준): 코스 생성 시간당 5회, 장소 조회 분당 30회. 코스에는 전체 하루 한도도 있다(임시값 하루 20건, 관광공사 한도 확인 전).
+- 자체 호출 한도 (제안값, ip_hash 기준): 코스 생성 시간당 5회, 장소 조회 분당 30회. 코스에는 전체 하루 한도도 있다(임시값 하루 20건, 관광공사 한도 확인 필요).
   - 개수를 센 뒤 허용된 요청만 usage_log에 기록하고, 거절된 요청과 입력 검증에 실패한 요청은 기록하지 않는다.
   - 한도 조회나 기록이 DB 오류이면 통과시키지 않고 DB_UNAVAILABLE이다. 한도 값은 rateLimit 함수의 정책 인자로 받는다.
 - AI 응답 검증 실패 시 재시도는 최대 1회(총 2번 호출)로 제한한다. 그래도 실패하면 BAD_AI_RESPONSE를 던진다.
@@ -184,7 +184,8 @@ db/migrations/
 - contentTypeId: 코드표는 12(관광지), 14(문화시설), 15(행사/공연/축제), 28(레포츠), 32(숙박), 38(쇼핑), 39(음식점)이다. 단, 목록·소개 조회의 파라미터 설명에는 75, 76 등 다른 값이 적혀 있어 문서가 서로 맞지 않는다.
   - 실제 호출 결과 12, 28, 32, 38, 39가 나왔고 75, 76은 나오지 않았다. 코드표(12 계열)를 따른다. 75, 76으로 직접 호출해 보지는 않았다.
   - TODO(확인 필요): 14(문화시설), 15(행사/공연/축제)는 아직 확인하지 못했다.
-- 호출 한도: 개발계정은 일 1,000건이다(출처 확인 필요). 장소 1곳의 동반 정보와 운영시간을 보려면 캐시에 없으면 3번(detailCommon2, detailPetTour2, detailIntro2) 호출해야 하므로, 상세 조회는 후보로 좁혀진 장소에만 한다.
+- 호출 한도: 일 1,000건이다(포털 활용신청 상세기능정보에서 기능별로 일일 트래픽 1000이 표시됨, 사용자 확인, 2026-10-31). 장소 1곳의 동반 정보와 운영시간을 보려면 캐시에 없으면 3번(detailCommon2, detailPetTour2, detailIntro2) 호출해야 하므로, 상세 조회는 후보로 좁혀진 장소에만 한다.
+- TODO(확인 필요): 일일 1,000건이 기능별 한도인지 서비스 전체 합산인지, 현재 키가 개발계정인지.
 - 상세 조회는 place_cache에 먼저 확인하고, 없거나 expires_at이 지났을 때만 외부 API를 호출한다.
 - detailCommon2(공통정보)는 contentId만 보내 샘플 4곳(12, 32, 38, 39)에서 정상 응답을 받았다. 매뉴얼 확인(Ver4.1): 요청은 serviceKey, MobileOS, MobileApp, contentId가 필수이고 contentTypeId는 요청 항목에 없어 보내지 않는다. 호출 결과로 확인함: 12, 32, 39 세 곳에서 items.item은 길이 1의 배열이고, title, addr1, mapx, mapy, firstimage, cpyrhtDivCd는 세 곳 모두 값이 있었다(38은 getPlaceDetail로 normalizePlace 통과와 title, 좌표, 이미지, cpyrhtDivCd 값 유무만 확인했다). 목록 필드에 없는 것은 telname, homepage, overview다. tel, telname, addr2 등은 장소마다 비어 있었다. 필드명과 의미는 매뉴얼 확인. 단 cat1~3은 매뉴얼 응답 표에 없지만 실제 응답에는 온다(호출 결과로 확인함). 호출 결과로 확인함: normalizePlace가 detailCommon2 응답에 그대로 통했다(표본 4곳). 존재하지 않는 contentId는 오류가 아니라 resultCode 0000의 빈 items로 온다(getPlaceDetail의 404 처리 근거).
 - detailCommon2로 상세 화면의 Place를 만든다. 선택 항목(주소, 이미지, 좌표 등)은 비어 있을 수 있어 optional로 처리한다. 표본이 4곳이라 항상 값이 있다고 단정하지 않는다.
