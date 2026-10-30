@@ -22,3 +22,10 @@ export const PER_TYPE_LIMIT = 20;
 export const MAX_POOL = 60;
 // 후보가 이 수보다 적으면 코스를 만들지 않는다. (최소 코스 크기)
 export const MIN_POOL = COURSE_MIN_COUNT;
+
+// 코스 한 건을 만드는 데 쓸 수 있는 전체 시간(ms)이다. 코스 route의 maxDuration(90초)보다 작게 둔다.
+export const COURSE_BUDGET_MS = 80_000;
+// 저장 단계를 위해 남겨 두는 시간이다. DB 쓰기 5초 + 타임아웃 뒤 확인 읽기 5초. 저장 앞 단계들은 마감에서 이만큼 뺀 시각까지만 쓴다.
+export const COURSE_SAVE_RESERVE_MS = 10_000;
+// 상세 확인 한 라운드의 최악 시간이다. 관광공사 타임아웃 8초 x 직렬 2단계(detailCommon2 -> detailPetTour2와 detailIntro2).
+export const COURSE_VERIFY_ROUND_MS = 16_000;

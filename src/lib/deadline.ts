@@ -10,8 +10,12 @@ export function remainingMs(deadlineAt: number | undefined, reserveMs = 0, now: 
   return deadlineAt === undefined ? Infinity : deadlineAt - reserveMs - now;
 }
 
+export function deadlineExceededError(): AppError {
+  return new AppError("API_TIMEOUT", TIMEOUT_MESSAGE, TIMEOUT_STATUS);
+}
+
 export function stepTimeoutMs(ownMs: number, deadlineAt?: number, reserveMs = 0, now: number = Date.now()): number {
   const remaining = remainingMs(deadlineAt, reserveMs, now);
-  if (remaining <= 0) throw new AppError("API_TIMEOUT", TIMEOUT_MESSAGE, TIMEOUT_STATUS);
+  if (remaining <= 0) throw deadlineExceededError();
   return Math.min(ownMs, remaining);
 }

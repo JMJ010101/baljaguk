@@ -43,6 +43,11 @@ function invalidInput(): AppError {
   return new AppError("INVALID_INPUT", INVALID_INPUT_MESSAGE, INVALID_INPUT_STATUS);
 }
 
+// 후보가 모자란 경우다. 조건(지역, 유형)을 바꾸면 해결될 수 있어 INVALID_INPUT 422로 알린다. 코스 조립도 이 오류를 쓴다.
+export function insufficientError(): AppError {
+  return new AppError("INVALID_INPUT", INSUFFICIENT_MESSAGE, INSUFFICIENT_STATUS);
+}
+
 type TypeList = { typeId: number; places: Located[]; truncated: boolean };
 
 // 한 기준점과 한 반경으로 만든 후보 묶음이다.
@@ -119,7 +124,7 @@ export async function collectCandidates(params: {
   // 기준점 후보: 관광지 목록이 있으면 그 목록, 없으면 다른 유형 목록 전체
   const preferred = lists.find((list) => list.typeId === ANCHOR_PREFERRED_TYPE_ID && list.places.length > 0);
   const anchorSource = preferred ? preferred.places : lists.flatMap((list) => list.places);
-  if (anchorSource.length === 0) throw new AppError("INVALID_INPUT", INSUFFICIENT_MESSAGE, INSUFFICIENT_STATUS);
+  if (anchorSource.length === 0) throw insufficientError();
   const anchors = shuffled(anchorSource, random).slice(0, ANCHOR_ATTEMPTS);
 
   const typesWithData = new Set(lists.filter((list) => list.places.length > 0).map((list) => list.typeId));
@@ -140,7 +145,7 @@ export async function collectCandidates(params: {
       }
     }
   }
-  if (best === undefined) throw new AppError("INVALID_INPUT", INSUFFICIENT_MESSAGE, INSUFFICIENT_STATUS);
+  if (best === undefined) throw insufficientError();
 
   const missingTypes: MissingType[] = types
     .filter((typeId) => !best.coveredTypeIds.has(typeId))

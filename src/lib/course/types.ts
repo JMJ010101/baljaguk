@@ -22,3 +22,17 @@ export type CandidatePool = {
   // normalize에 실패해서 건너뛴 항목 수
   skipped: number;
 };
+
+// 화면과 공유 링크가 쓰는 코스 타입이다. 화면 코드는 이 타입만 쓴다.
+// 사용자가 쓴 분위기(mood)와 내부 정보(프로필 스냅샷, 기준점, 반경, 프롬프트 버전)는 담지 않는다.
+export type PublicCourse = {
+  id: string;
+  createdAt: string;
+  sido: string;
+  sigungu?: string;
+  types: number[];
+  // 후보가 없어서 빼고 만든 유형. 화면은 이것으로 안내 문구를 만든다.
+  missingTypes: MissingType[];
+  // 순서 있는 장소 id
+  placeIds: number[];
+};
