@@ -11,8 +11,9 @@ import {
 } from "@/lib/course/constants";
 import { haversineMeters } from "@/lib/course/distance";
 import type { CandidatePool, CourseCandidate, MissingType } from "@/lib/course/types";
+import { stepTimeoutMs } from "@/lib/deadline";
 import { SIDO_CODE_PATTERN } from "@/lib/placesQuery";
-import { fetchAreaBasedList } from "@/lib/tour/client";
+import { fetchAreaBasedList, TOUR_TIMEOUT_MS } from "@/lib/tour/client";
 import { COURSE_CONTENT_TYPE_IDS } from "@/lib/tour/contentTypes";
 import { normalizePlace } from "@/lib/tour/normalize";
 import type { Place } from "@/types";
@@ -78,8 +79,11 @@ export async function collectCandidates(params: {
   sigungu?: string;
   types: number[];
   random?: () => number;
+  // 전체 예산의 마감 시각과 뒤 단계를 위해 남겨 둘 시간. 주면 각 목록 호출의 타임아웃을 남은 예산으로 줄인다.
+  deadlineAt?: number;
+  reserveMs?: number;
 }): Promise<CandidatePool> {
-  const { sido, sigungu, types, random = Math.random } = params;
+  const { sido, sigungu, types, random = Math.random, deadlineAt, reserveMs } = params;
 
   if (!SIDO_CODE_PATTERN.test(sido)) throw invalidInput();
   if (sigungu !== undefined && !SIDO_CODE_PATTERN.test(sigungu)) throw invalidInput();
@@ -89,13 +93,16 @@ export async function collectCandidates(params: {
   let skipped = 0;
   const lists: TypeList[] = await Promise.all(
     types.map(async (typeId) => {
-      const { items, totalCount } = await fetchAreaBasedList({
-        numOfRows: AREA_LIST_NUM_OF_ROWS,
-        pageNo: 1,
-        contentTypeId: typeId,
-        lDongRegnCd: sido,
-        lDongSignguCd: sigungu,
-      });
+      const { items, totalCount } = await fetchAreaBasedList(
+        {
+          numOfRows: AREA_LIST_NUM_OF_ROWS,
+          pageNo: 1,
+          contentTypeId: typeId,
+          lDongRegnCd: sido,
+          lDongSignguCd: sigungu,
+        },
+        { timeoutMs: stepTimeoutMs(TOUR_TIMEOUT_MS, deadlineAt, reserveMs) },
+      );
       const places: Located[] = [];
       for (const raw of items) {
         try {

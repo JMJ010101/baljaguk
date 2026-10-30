@@ -1,6 +1,13 @@
+import { DB_TIMEOUT_MS } from "@/lib/db/client";
 import { getCachedPlace, setCachedPlace, type CachedPlace } from "@/lib/db/placeCache";
+import { stepTimeoutMs } from "@/lib/deadline";
 import { AppError } from "@/lib/errors";
-import { fetchCommonDetail, fetchIntroDetail, fetchPetTourDetail } from "@/lib/tour/client";
+import {
+  fetchCommonDetail,
+  fetchIntroDetail,
+  fetchPetTourDetail,
+  TOUR_TIMEOUT_MS,
+} from "@/lib/tour/client";
 import { normalizePlace, normalizePlaceDetail } from "@/lib/tour/normalize";
 
 const NOT_FOUND_MESSAGE = "존재하지 않는 장소예요";
@@ -18,11 +25,18 @@ function firstItemOrEmpty(operation: string, placeId: number, items: unknown[]):
 
 // 캐시 -> detailCommon2 -> (detailPetTour2 + detailIntro2) -> 캐시 저장 순서다.
 // 캐시나 DB 오류는 삼키지 않고 DB_UNAVAILABLE로 던진다. 한쪽 호출이 실패하면 전체가 실패하고 캐시에 저장하지 않는다.
-export async function getPlaceDetail(placeId: number): Promise<CachedPlace> {
-  const cached = await getCachedPlace(placeId);
+// options를 주지 않으면 각 호출은 자기 타임아웃 상수를 쓴다. 코스 생성은 deadlineAt(전체 예산의 마감 시각)과
+// reserveMs(뒤 단계를 위해 남겨 둘 시간)를 줘서 각 호출의 타임아웃을 남은 예산으로 줄인다.
+export async function getPlaceDetail(
+  placeId: number,
+  options?: { deadlineAt?: number; reserveMs?: number },
+): Promise<CachedPlace> {
+  const step = (ownMs: number) => stepTimeoutMs(ownMs, options?.deadlineAt, options?.reserveMs);
+
+  const cached = await getCachedPlace(placeId, { timeoutMs: step(DB_TIMEOUT_MS) });
   if (cached) return cached;
 
-  const [commonItem] = await fetchCommonDetail(placeId);
+  const [commonItem] = await fetchCommonDetail(placeId, { timeoutMs: step(TOUR_TIMEOUT_MS) });
   if (commonItem === undefined) {
     throw new AppError("INVALID_INPUT", NOT_FOUND_MESSAGE, NOT_FOUND_STATUS);
   }
@@ -34,9 +48,10 @@ export async function getPlaceDetail(placeId: number): Promise<CachedPlace> {
     throw new AppError("API_FAILED", API_FAILED_MESSAGE, API_FAILED_STATUS);
   }
 
+  const detailTimeoutMs = step(TOUR_TIMEOUT_MS);
   const [petItems, introItems] = await Promise.all([
-    fetchPetTourDetail(place.id),
-    fetchIntroDetail(place.id, place.contentTypeId),
+    fetchPetTourDetail(place.id, { timeoutMs: detailTimeoutMs }),
+    fetchIntroDetail(place.id, place.contentTypeId, { timeoutMs: detailTimeoutMs }),
   ]);
   const detail = normalizePlaceDetail(
     place.id,
@@ -45,6 +60,6 @@ export async function getPlaceDetail(placeId: number): Promise<CachedPlace> {
     firstItemOrEmpty("detailIntro2", place.id, introItems),
   );
 
-  await setCachedPlace(place, detail);
+  await setCachedPlace(place, detail, { timeoutMs: step(DB_TIMEOUT_MS) });
   return { place, detail };
 }

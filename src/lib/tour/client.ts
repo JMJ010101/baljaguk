@@ -5,7 +5,10 @@ import "server-only";
 import { AppError } from "@/lib/errors";
 
 const BASE_URL = "https://apis.data.go.kr/B551011/KorPetTourService2";
-const TOUR_TIMEOUT_MS = 8000;
+export const TOUR_TIMEOUT_MS = 8000;
+
+// timeoutMs를 주면 그 값을 타임아웃으로 쓴다. 호출하는 쪽이 전체 예산에서 남은 시간으로 줄여서 넘긴다. 없으면 TOUR_TIMEOUT_MS다.
+export type TourCallOptions = { timeoutMs?: number };
 const MOBILE_OS = "ETC";
 const MOBILE_APP = "baljaguk";
 
@@ -74,11 +77,15 @@ type TourResponse = {
   };
 };
 
-async function requestTour(operation: string, params: Record<string, string>): Promise<TourResponse> {
+async function requestTour(
+  operation: string,
+  params: Record<string, string>,
+  timeoutMs: number = TOUR_TIMEOUT_MS,
+): Promise<TourResponse> {
   let text: string;
   try {
     const res = await fetch(buildUrl(operation, params), {
-      signal: AbortSignal.timeout(TOUR_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     text = await res.text();
   } catch (e) {
@@ -134,7 +141,7 @@ export async function fetchAreaBasedList(params: {
   arrange?: string;
   lDongRegnCd?: string;
   lDongSignguCd?: string;
-}): Promise<{ items: unknown[]; totalCount?: number }> {
+}, options?: TourCallOptions): Promise<{ items: unknown[]; totalCount?: number }> {
   const query: Record<string, string> = {
     numOfRows: String(params.numOfRows),
     pageNo: String(params.pageNo),
@@ -143,7 +150,7 @@ export async function fetchAreaBasedList(params: {
   if (params.arrange !== undefined) query.arrange = params.arrange;
   if (params.lDongRegnCd !== undefined) query.lDongRegnCd = params.lDongRegnCd;
   if (params.lDongSignguCd !== undefined) query.lDongSignguCd = params.lDongSignguCd;
-  const json = await requestTour("areaBasedList2", query);
+  const json = await requestTour("areaBasedList2", query, options?.timeoutMs);
   return { items: extractItems(json), totalCount: extractTotalCount(json) };
 }
 
@@ -153,32 +160,40 @@ export async function fetchLdongCodes(params: {
   numOfRows: number;
   pageNo: number;
   lDongRegnCd?: string;
-}): Promise<{ items: unknown[]; totalCount?: number }> {
+}, options?: TourCallOptions): Promise<{ items: unknown[]; totalCount?: number }> {
   const query: Record<string, string> = {
     numOfRows: String(params.numOfRows),
     pageNo: String(params.pageNo),
   };
   if (params.lDongRegnCd !== undefined) query.lDongRegnCd = params.lDongRegnCd;
-  const json = await requestTour("ldongCode2", query);
+  const json = await requestTour("ldongCode2", query, options?.timeoutMs);
   return { items: extractItems(json), totalCount: extractTotalCount(json) };
 }
 
-export async function fetchPetTourDetail(contentId: number): Promise<unknown[]> {
-  const json = await requestTour("detailPetTour2", { contentId: String(contentId) });
+export async function fetchPetTourDetail(contentId: number, options?: TourCallOptions): Promise<unknown[]> {
+  const json = await requestTour("detailPetTour2", { contentId: String(contentId) }, options?.timeoutMs);
   return extractItems(json);
 }
 
   // contentTypeId는 필수다(매뉴얼 확인). 항상 함께 보낸다. (호출 결과로 확인함: 뺀 호출은 정상 응답을 받지 못했다.)
-export async function fetchIntroDetail(contentId: number, contentTypeId: number): Promise<unknown[]> {
-  const json = await requestTour("detailIntro2", {
-    contentId: String(contentId),
-    contentTypeId: String(contentTypeId),
-  });
+export async function fetchIntroDetail(
+  contentId: number,
+  contentTypeId: number,
+  options?: TourCallOptions,
+): Promise<unknown[]> {
+  const json = await requestTour(
+    "detailIntro2",
+    {
+      contentId: String(contentId),
+      contentTypeId: String(contentTypeId),
+    },
+    options?.timeoutMs,
+  );
   return extractItems(json);
 }
 
 // 공통정보(이름, 주소, 이미지, 좌표 등). 매뉴얼 Ver4.1상 요청은 contentId만 필요하고 contentTypeId는 요청 항목에 없다.
-export async function fetchCommonDetail(contentId: number): Promise<unknown[]> {
-  const json = await requestTour("detailCommon2", { contentId: String(contentId) });
+export async function fetchCommonDetail(contentId: number, options?: TourCallOptions): Promise<unknown[]> {
+  const json = await requestTour("detailCommon2", { contentId: String(contentId) }, options?.timeoutMs);
   return extractItems(json);
 }
