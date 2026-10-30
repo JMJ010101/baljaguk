@@ -5,7 +5,7 @@ import { test } from "node:test";
 import { getClientIpHash, hashIp, readClientIp } from "@/lib/clientIp";
 import { AppError } from "@/lib/errors";
 
-const request = (headers: Record<string, string>) => new Request("https://example.com/api/course", { method: "POST", headers });
+const headersOf = (headers: Record<string, string>) => new Headers(headers);
 
 test("x-vercel-forwarded-for가 있으면 그것을 먼저 쓴다", () => {
   const headers = new Headers({ "x-vercel-forwarded-for": "1.1.1.1", "x-forwarded-for": "2.2.2.2" });
@@ -35,7 +35,7 @@ test("소금 환경변수가 없으면 해시를 만들지 않고 API_FAILED 500
   delete process.env.RATE_LIMIT_SALT;
   try {
     assert.throws(
-      () => getClientIpHash(request({ "x-forwarded-for": "1.1.1.1" })),
+      () => getClientIpHash(headersOf({ "x-forwarded-for": "1.1.1.1" })),
       (e: unknown) => e instanceof AppError && e.code === "API_FAILED" && e.status === 500,
     );
   } finally {
@@ -47,7 +47,7 @@ test("소금이 있으면 요청 헤더의 IP로 해시를 만든다", () => {
   const saved = process.env.RATE_LIMIT_SALT;
   process.env.RATE_LIMIT_SALT = "test-salt";
   try {
-    assert.equal(getClientIpHash(request({ "x-forwarded-for": "1.1.1.1" })), hashIp("1.1.1.1", "test-salt"));
+    assert.equal(getClientIpHash(headersOf({ "x-forwarded-for": "1.1.1.1" })), hashIp("1.1.1.1", "test-salt"));
   } finally {
     if (saved === undefined) delete process.env.RATE_LIMIT_SALT;
     else process.env.RATE_LIMIT_SALT = saved;

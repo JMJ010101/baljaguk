@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     const { id, missingTypes } = await generateCourse(body, {
       deadlineAt,
       beforeExternalCalls: () =>
-        enforceRateLimit({ ipHash: getClientIpHash(request), policy: COURSE_RATE_POLICY, deadlineAt }),
+        enforceRateLimit({ ipHash: getClientIpHash(request.headers), policy: COURSE_RATE_POLICY, deadlineAt }),
     });
     return Response.json({ id, missingTypes });
   } catch (e) {

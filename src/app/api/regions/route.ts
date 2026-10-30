@@ -2,6 +2,7 @@ import { z } from "zod";
 import { AppError } from "@/lib/errors";
 import { toErrorResponse } from "@/lib/errorResponse";
 import { SIDO_CODE_PATTERN } from "@/lib/placesQuery";
+import { enforcePlacesRateLimit } from "@/lib/rateLimit";
 import {
   getSidoList,
   getSigunguList,
@@ -22,7 +23,9 @@ export async function GET(request: Request) {
       throw new AppError("INVALID_INPUT", INVALID_INPUT_MESSAGE, INVALID_INPUT_STATUS);
     }
     const { sido } = parsed.data;
-    return Response.json(sido === undefined ? await getSidoList() : await getSigunguList(sido));
+    // 메모리 캐시에 없어서 관광공사를 부를 때만 한도를 센다.
+    const options = { beforeTourCall: () => enforcePlacesRateLimit(request.headers) };
+    return Response.json(sido === undefined ? await getSidoList(options) : await getSigunguList(sido, options));
   } catch (e) {
     return toErrorResponse(e);
   }

@@ -27,11 +27,12 @@ export function hashIp(ip: string, salt: string): string {
 }
 
 // 소금이 없으면 해시를 만들 수 없다. 요청을 통과시키지 않고 실패시킨다. (별도 에러 코드는 만들지 않는다)
-export function getClientIpHash(request: Request): string {
+// route는 request.headers를, 서버 컴포넌트(page)는 next/headers의 headers()를 넘긴다.
+export function getClientIpHash(headers: Headers): string {
   const salt = process.env[SALT_ENV_NAME];
   if (!salt) {
     console.error(`${SALT_ENV_NAME}가 설정되어 있지 않음`);
     throw new AppError("API_FAILED", CONFIG_ERROR_MESSAGE, CONFIG_ERROR_STATUS);
   }
-  return hashIp(readClientIp(request.headers), salt);
+  return hashIp(readClientIp(headers), salt);
 }

@@ -4,6 +4,7 @@
 // DB 오류나 타임아웃이면 통과시키지 않고 DB_UNAVAILABLE로 실패시킨다. (fail closed)
 // 한도 값은 정책 인자로 받는다. 시험에서는 한도를 0으로 넘겨 상수를 바꾸지 않고 거절 경로를 확인한다.
 import "server-only";
+import { getClientIpHash } from "@/lib/clientIp";
 import { DB_TIMEOUT_MS } from "@/lib/db/client";
 import { countUsage, recordUsage } from "@/lib/db/usage";
 import { stepTimeoutMs } from "@/lib/deadline";
@@ -54,6 +55,11 @@ export const PLACES_RATE_POLICY: RateLimitPolicy = {
     global: "오늘 장소 조회 가능 횟수를 넘었어요. 시간이 조금 지난 뒤 다시 시도해 주세요.",
   },
 };
+
+// 장소 API가 쓰는 한 줄짜리 확인이다. IP 해시는 호출될 때 만든다(소금 설정 오류는 검증을 통과한 요청에서만 난다).
+export function enforcePlacesRateLimit(headers: Headers): Promise<void> {
+  return enforceRateLimit({ ipHash: getClientIpHash(headers), policy: PLACES_RATE_POLICY });
+}
 
 export type RateLimitDeps = {
   countUsage: typeof countUsage;

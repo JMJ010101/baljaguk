@@ -2,6 +2,7 @@ import { z } from "zod";
 import { AppError } from "@/lib/errors";
 import { toErrorResponse } from "@/lib/errorResponse";
 import { SIDO_CODE_PATTERN } from "@/lib/placesQuery";
+import { enforcePlacesRateLimit } from "@/lib/rateLimit";
 import { CONTENT_TYPE_IDS } from "@/lib/tour/contentTypes";
 import { getPlaces } from "@/lib/tour/places";
 
@@ -38,6 +39,8 @@ export async function GET(request: Request) {
     if (!parsed.success) {
       throw new AppError("INVALID_INPUT", INVALID_INPUT_MESSAGE, INVALID_INPUT_STATUS);
     }
+    // 목록은 캐시가 없어서 매번 관광공사를 부른다. 입력 검증 뒤, 호출 전에 한도를 확인한다.
+    await enforcePlacesRateLimit(request.headers);
     const { sido, ...rest } = parsed.data;
     return Response.json(await getPlaces({ ...rest, lDongRegnCd: sido }));
   } catch (e) {

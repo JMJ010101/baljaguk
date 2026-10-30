@@ -24,15 +24,30 @@ const regionSchema = z.object({
   name: z.string().min(1),
 });
 
+// 테스트에서 외부 호출을 바꿔 끼울 수 있게 한다.
+export type RegionsDeps = { fetchLdongCodes: typeof fetchLdongCodes };
+const defaultDeps: RegionsDeps = { fetchLdongCodes };
+
+// beforeTourCall은 메모리 캐시에 없을 때만, 관광공사를 부르기 직전에 한 번 부른다. 호출 한도(rateLimit)를 여기에 연결한다.
+// 던지면 관광공사 호출 없이 그 오류로 끝나고 캐시에는 아무것도 저장하지 않는다.
+export type RegionsOptions = { beforeTourCall?: () => Promise<void> };
+
 // 모듈 변수 캐시다. 인스턴스별 캐시이며 보장은 아니다. 실패와 빈 결과는 저장하지 않는다.
 const cache = new Map<string, { result: RegionsResult; expiresAt: number }>();
 
 // lDongListYn은 보내지 않는다. 기본값이 N이라는 설명은 매뉴얼 근거 없음, 호출로 확인(code, name만 옴).
-async function loadRegions(cacheKey: string, lDongRegnCd?: string): Promise<RegionsResult> {
+async function loadRegions(
+  cacheKey: string,
+  lDongRegnCd: string | undefined,
+  options: RegionsOptions,
+  deps: RegionsDeps,
+): Promise<RegionsResult> {
   const cached = cache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.result;
 
-  const { items } = await fetchLdongCodes({ numOfRows: NUM_OF_ROWS, pageNo: FIRST_PAGE, lDongRegnCd });
+  await options.beforeTourCall?.();
+
+  const { items } = await deps.fetchLdongCodes({ numOfRows: NUM_OF_ROWS, pageNo: FIRST_PAGE, lDongRegnCd });
   const regions: Region[] = [];
   let skipped = 0;
 
@@ -51,16 +66,20 @@ async function loadRegions(cacheKey: string, lDongRegnCd?: string): Promise<Regi
   return result;
 }
 
-export function getSidoList(): Promise<RegionsResult> {
-  return loadRegions("sido");
+export function getSidoList(options: RegionsOptions = {}, deps: RegionsDeps = defaultDeps): Promise<RegionsResult> {
+  return loadRegions("sido", undefined, options, deps);
 }
 
 // 시군구는 시도 코드 없이 조회하지 않는다.
-export async function getSigunguList(sidoCode: string): Promise<RegionsResult> {
+export async function getSigunguList(
+  sidoCode: string,
+  options: RegionsOptions = {},
+  deps: RegionsDeps = defaultDeps,
+): Promise<RegionsResult> {
   if (!SIDO_CODE_PATTERN.test(sidoCode)) {
     throw new AppError("INVALID_INPUT", INVALID_INPUT_MESSAGE, INVALID_INPUT_STATUS);
   }
-  const result = await loadRegions(`sigungu:${sidoCode}`, sidoCode);
+  const result = await loadRegions(`sigungu:${sidoCode}`, sidoCode, options, deps);
   // 존재하지 않는 시도 코드는 빈 문자열 항목 1개로 와서 전부 건너뛰어진다. 빈 결과는 loadRegions가 캐시하지 않는다.
   if (result.regions.length === 0) {
     throw new AppError("INVALID_INPUT", INVALID_INPUT_MESSAGE, NOT_FOUND_STATUS);

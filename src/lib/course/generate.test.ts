@@ -32,6 +32,7 @@ const badPicks = () => ({ ok: false as const, violations: ["wrong_count" as cons
 
 function harness(picks: unknown[]) {
   const order: string[] = [];
+  const detailOptions: unknown[] = [];
   const queue = [...picks];
   const deps = {
     collectCandidates: async () => {
@@ -42,15 +43,16 @@ function harness(picks: unknown[]) {
       order.push("ai");
       return queue.shift();
     },
-    getPlaceDetail: async (id: number) => {
+    getPlaceDetail: async (id: number, detailCall?: unknown) => {
       order.push("detail");
+      detailOptions.push(detailCall);
       return { place: { id }, detail: { placeId: id, acmpyTypeCd: "전구역 동반가능" } };
     },
     createCourse: async () => {
       order.push("save");
     },
   } as unknown as Partial<GenerateDeps>;
-  return { deps, order };
+  return { deps, order, detailOptions };
 }
 
 const REQ = { sido: "11", types: [12, 14, 39] };
@@ -123,4 +125,20 @@ test("콜백을 주지 않아도 동작한다", async () => {
   const { deps } = harness([goodPicks([1, 4, 6, 2, 7])]);
   const result = await generateCourse(REQ, { deadlineAt: far(), deps });
   assert.equal(result.placeIds.length, 5);
+});
+
+test("상세 확인은 관광공사 한도 콜백(beforeTourCalls)을 넘기지 않는다 (코스 한도가 이미 세므로 이중으로 세지 않는다)", async () => {
+  const { deps, detailOptions } = harness([goodPicks([1, 4, 6, 2, 7])]);
+  await generateCourse(REQ, {
+    deadlineAt: far(),
+    deps,
+    beforeExternalCalls: async () => {
+      // 코스 한도 확인 자리
+    },
+  });
+  assert.equal(detailOptions.length, 5);
+  for (const options of detailOptions as Record<string, unknown>[]) {
+    assert.ok(options !== undefined && typeof options.deadlineAt === "number");
+    assert.ok(!("beforeTourCalls" in options), "상세 확인이 beforeTourCalls를 넘김");
+  }
 });

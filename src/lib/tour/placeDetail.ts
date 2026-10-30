@@ -23,20 +23,43 @@ function firstItemOrEmpty(operation: string, placeId: number, items: unknown[]):
   return {};
 }
 
+// 테스트에서 외부 호출과 캐시를 바꿔 끼울 수 있게 한다.
+export type PlaceDetailDeps = {
+  getCachedPlace: typeof getCachedPlace;
+  setCachedPlace: typeof setCachedPlace;
+  fetchCommonDetail: typeof fetchCommonDetail;
+  fetchPetTourDetail: typeof fetchPetTourDetail;
+  fetchIntroDetail: typeof fetchIntroDetail;
+};
+
+const defaultDeps: PlaceDetailDeps = {
+  getCachedPlace,
+  setCachedPlace,
+  fetchCommonDetail,
+  fetchPetTourDetail,
+  fetchIntroDetail,
+};
+
 // 캐시 -> detailCommon2 -> (detailPetTour2 + detailIntro2) -> 캐시 저장 순서다.
 // 캐시나 DB 오류는 삼키지 않고 DB_UNAVAILABLE로 던진다. 한쪽 호출이 실패하면 전체가 실패하고 캐시에 저장하지 않는다.
 // options를 주지 않으면 각 호출은 자기 타임아웃 상수를 쓴다. 코스 생성은 deadlineAt(전체 예산의 마감 시각)과
 // reserveMs(뒤 단계를 위해 남겨 둘 시간)를 줘서 각 호출의 타임아웃을 남은 예산으로 줄인다.
+// beforeTourCalls는 캐시에 없을 때만, 첫 관광공사 호출 전에 한 번 부른다. 호출 한도(rateLimit)를 여기에 연결한다.
+// 캐시 적중은 관광공사를 부르지 않으므로 세지 않는다. 던지면 관광공사 호출 없이 그 오류로 끝난다.
+// 코스 생성의 상세 확인은 이 콜백을 넘기지 않는다. 코스 한도가 이미 그 호출을 세므로 이중으로 세지 않는다.
 export async function getPlaceDetail(
   placeId: number,
-  options?: { deadlineAt?: number; reserveMs?: number },
+  options?: { deadlineAt?: number; reserveMs?: number; beforeTourCalls?: () => Promise<void> },
+  deps: PlaceDetailDeps = defaultDeps,
 ): Promise<CachedPlace> {
   const step = (ownMs: number) => stepTimeoutMs(ownMs, options?.deadlineAt, options?.reserveMs);
 
-  const cached = await getCachedPlace(placeId, { timeoutMs: step(DB_TIMEOUT_MS) });
+  const cached = await deps.getCachedPlace(placeId, { timeoutMs: step(DB_TIMEOUT_MS) });
   if (cached) return cached;
 
-  const [commonItem] = await fetchCommonDetail(placeId, { timeoutMs: step(TOUR_TIMEOUT_MS) });
+  await options?.beforeTourCalls?.();
+
+  const [commonItem] = await deps.fetchCommonDetail(placeId, { timeoutMs: step(TOUR_TIMEOUT_MS) });
   if (commonItem === undefined) {
     throw new AppError("INVALID_INPUT", NOT_FOUND_MESSAGE, NOT_FOUND_STATUS);
   }
@@ -50,8 +73,8 @@ export async function getPlaceDetail(
 
   const detailTimeoutMs = step(TOUR_TIMEOUT_MS);
   const [petItems, introItems] = await Promise.all([
-    fetchPetTourDetail(place.id, { timeoutMs: detailTimeoutMs }),
-    fetchIntroDetail(place.id, place.contentTypeId, { timeoutMs: detailTimeoutMs }),
+    deps.fetchPetTourDetail(place.id, { timeoutMs: detailTimeoutMs }),
+    deps.fetchIntroDetail(place.id, place.contentTypeId, { timeoutMs: detailTimeoutMs }),
   ]);
   const detail = normalizePlaceDetail(
     place.id,
@@ -60,6 +83,6 @@ export async function getPlaceDetail(
     firstItemOrEmpty("detailIntro2", place.id, introItems),
   );
 
-  await setCachedPlace(place, detail, { timeoutMs: step(DB_TIMEOUT_MS) });
+  await deps.setCachedPlace(place, detail, { timeoutMs: step(DB_TIMEOUT_MS) });
   return { place, detail };
 }
