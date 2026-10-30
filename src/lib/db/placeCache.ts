@@ -2,7 +2,7 @@
 // DB의 place_id는 text, Place의 id는 number다. 변환은 이 파일 안에서만 한다.
 import "server-only";
 import { z } from "zod";
-import { createDbClient } from "@/lib/db/client";
+import { createDbClient, DB_TIMEOUT_MS } from "@/lib/db/client";
 import { AppError } from "@/lib/errors";
 import type { Place, PlaceDetail } from "@/types";
 
@@ -57,6 +57,7 @@ export async function getCachedPlace(placeId: number): Promise<CachedPlace | nul
     .from(TABLE_NAME)
     .select("place_id, data, expires_at")
     .eq("place_id", rowId)
+    .abortSignal(AbortSignal.timeout(DB_TIMEOUT_MS))
     .maybeSingle();
   if (error) throw dbUnavailableError(error);
   if (!row) return null;
@@ -90,6 +91,7 @@ export async function setCachedPlace(place: Place, detail: PlaceDetail): Promise
         expires_at: new Date(now + CACHE_TTL_MS).toISOString(),
       },
       { onConflict: "place_id" },
-    );
+    )
+    .abortSignal(AbortSignal.timeout(DB_TIMEOUT_MS));
   if (error) throw dbUnavailableError(error);
 }

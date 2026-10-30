@@ -4,6 +4,12 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import { AppError } from "@/lib/errors";
 
+// DB 쿼리마다 .abortSignal(AbortSignal.timeout(DB_TIMEOUT_MS))를 건다. (Supabase 공식 문서의 abortSignal)
+// 타임아웃은 예외가 아니라 { data: null, error }로 돌아와서 각 쿼리의 기존 오류 처리가 DB_UNAVAILABLE로 바꾼다. (select, maybeSingle, upsert로 확인함)
+// abortSignal은 maybeSingle() 앞에 붙인다. 뒤에 붙이면 런타임은 되지만 타입 정의가 허용하지 않는다.
+// 첫 연결에 1.4초가 걸린 적이 있어(측정) 5초로 둔다. 중단된 쓰기가 서버에 반영되는지는 1ms 중단에서만 확인했다.
+export const DB_TIMEOUT_MS = 5000;
+
 const DB_UNAVAILABLE_MESSAGE = "데이터를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.";
 const DB_UNAVAILABLE_STATUS = 503;
 
