@@ -7,7 +7,13 @@ import Button from "@/components/Button";
 import Pagination from "@/components/Pagination";
 import PlaceCard from "@/components/PlaceCard";
 import { PlacesEmpty, PlacesError, PlacesLoading } from "@/components/places/PlacesStatus";
-import { buildPlacesApiUrl, buildPlacesHref, getPageCount, parsePlacesQuery } from "@/lib/placesQuery";
+import {
+  buildPlaceDetailHref,
+  buildPlacesApiUrl,
+  buildPlacesHref,
+  getPageCount,
+  parsePlacesQuery,
+} from "@/lib/placesQuery";
 import { CONTENT_TYPES } from "@/lib/tour/contentTypes";
 import type { Place, SidoListState } from "@/types";
 
@@ -166,7 +172,7 @@ export default function PlacesExplorer({ sidoState }: { sidoState: SidoListState
             <ul className="flex flex-col gap-4">
               {outcome.places.map((place) => (
                 <li key={place.id}>
-                  <PlaceCard place={place} href={`/places/${place.id}`} />
+                  <PlaceCard place={place} href={buildPlaceDetailHref(place.id, query)} />
                 </li>
               ))}
             </ul>
