@@ -14,6 +14,12 @@ export type Place = {
   modifiedTime?: string;
 };
 
+// 법정동 코드 조회(ldongCode2)를 normalize한 결과다. 시도 목록이면 시도, 시군구 목록이면 시군구의 코드와 이름이다.
+export type Region = {
+  code: string;
+  name: string;
+};
+
 // 장소 상세 정보(detailPetTour2 + detailIntro2를 normalize한 결과)다.
 // 값이 없으면 undefined다. undefined인 항목은 "방문 전 확인 필요" 표시 대상이 된다.
 // 아래 값은 모두 자유 텍스트이므로 파싱하지 않고 문자열 그대로 보여준다.

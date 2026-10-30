@@ -1,6 +1,6 @@
 // 관광공사 반려동물 동반여행 API(KorPetTourService2) 호출만 담당한다. 응답 변환은 normalize.ts에서 한다.
 // 이 파일의 함수는 원본 item(들)만 돌려준다. 외부 호출은 자동 재시도하지 않는다.
-// TODO(확인 필요): 지역 코드 값 목록은 법정동 코드 조회 오퍼레이션(ldongCode2)을 확인해야 한다. 지역 필터는 아직 만들지 않았다.
+// 지역 필터(lDongRegnCd 등)를 목록 호출(areaBasedList2)에 보내는 기능은 아직 만들지 않았다. 법정동 코드 조회(ldongCode2)는 fetchLdongCodes다.
 import "server-only";
 import { AppError } from "@/lib/errors";
 
@@ -130,6 +130,22 @@ export async function fetchAreaBasedList(params: {
   if (params.contentTypeId !== undefined) query.contentTypeId = String(params.contentTypeId);
   if (params.arrange !== undefined) query.arrange = params.arrange;
   const json = await requestTour("areaBasedList2", query);
+  return { items: extractItems(json), totalCount: extractTotalCount(json) };
+}
+
+// 법정동 코드 조회(ldongCode2). lDongRegnCd가 없으면 시도 목록, 있으면 그 시도의 시군구 목록이다. (docs/manual.docx 오퍼레이션 10)
+// lDongListYn은 보내지 않는다.
+export async function fetchLdongCodes(params: {
+  numOfRows: number;
+  pageNo: number;
+  lDongRegnCd?: string;
+}): Promise<{ items: unknown[]; totalCount?: number }> {
+  const query: Record<string, string> = {
+    numOfRows: String(params.numOfRows),
+    pageNo: String(params.pageNo),
+  };
+  if (params.lDongRegnCd !== undefined) query.lDongRegnCd = params.lDongRegnCd;
+  const json = await requestTour("ldongCode2", query);
   return { items: extractItems(json), totalCount: extractTotalCount(json) };
 }
 
