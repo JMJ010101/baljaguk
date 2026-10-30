@@ -9,9 +9,9 @@
 ## 기술 스택
 - Next.js 16.4.3 (App Router) + React 19.3.0 + TypeScript, Vercel 배포
 - 스타일: Tailwind CSS v4 (package.json에 이미 설치되어 있다)
-- 아직 설치되지 않은 패키지(zod, Supabase 클라이언트, OpenAI SDK, server-only)는 해당 기능을 구현할 때 설치한다.
+- 아직 설치되지 않은 패키지는 OpenAI SDK뿐이다. AI 연동 기능을 구현할 때 설치한다. 나머지 의존성은 package.json을 따른다.
 - DB: Supabase (Postgres)
-- AI: OpenAI API / 모델명: TODO(확인 필요): 사용할 OpenAI 모델명 (AI 연동 기능을 구현하기 전에 정한다)
+- AI: OpenAI API / 모델명: gpt-6-luna로 정함(사용자 결정). 가격, 구조화 출력, 추론 설정은 확인 필요
 - 모델명은 한 곳(상수 또는 환경변수)에서만 정의한다. 프롬프트 버전을 비교할 때는 같은 모델로 비교한다.
 - 검증: zod
 - 장소 데이터: 한국관광공사 '반려동물 동반여행 서비스' API (공공데이터포털, 인증키 필요)
@@ -97,7 +97,7 @@ db/migrations/
 - 로그인은 아직 없다. 나중을 위해 courses.owner_id를 유지한다.
 - JSONB로 저장한 데이터는 읽을 때 zod로 다시 검증한다.
 - 컬럼 초안 (제안값, 첫 마이그레이션 작성 시 확정한다):
-  - courses: id(uuid, PK), owner_id(uuid, NULL 허용), input(jsonb, 사용자 조건), result(jsonb, 순서가 있는 placeId 목록과 이유), prompt_version(text), created_at
+  - courses: id(uuid, PK), owner_id(uuid, NULL 허용), input(jsonb, 사용자 조건과 고정 기본 프로필 스냅샷, 기준점 placeId), result(jsonb, 순서가 있는 placeId 목록), prompt_version(text), created_at
   - place_cache: place_id(text, PK), data(jsonb, { place: Place, detail: PlaceDetail }), fetched_at, expires_at
   - usage_log: id, ip_hash(text), endpoint(text), created_at
 - 컬럼을 위 초안에 임의로 추가하지 않는다. 필요하면 새 마이그레이션 파일로 추가한다.
