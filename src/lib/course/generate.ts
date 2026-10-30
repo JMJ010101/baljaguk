@@ -64,7 +64,13 @@ export function deriveRegionName(address: string | undefined, sido: string, sigu
 
 export async function generateCourse(
   rawRequest: unknown,
-  options: { deadlineAt: number; deps?: Partial<GenerateDeps> },
+  options: {
+    deadlineAt: number;
+    deps?: Partial<GenerateDeps>;
+    // 입력 검증 뒤, 외부 호출(관광공사, OpenAI) 전에 한 번만 부른다. 호출 한도 확인(rateLimit)을 여기에 연결한다.
+    // 던지면 외부 호출 없이 그 오류로 끝난다. 재시도 루프 안에서는 다시 부르지 않는다.
+    beforeExternalCalls?: () => Promise<void>;
+  },
 ): Promise<GenerateResult> {
   const deps: GenerateDeps = { ...defaultDeps, ...options.deps };
   const { deadlineAt } = options;
@@ -73,6 +79,8 @@ export async function generateCourse(
   // 입력 검증에 실패하면 여기서 끝난다. 외부 호출은 0번이다.
   const request = parseCourseRequest(rawRequest);
   const persona = getPersona();
+
+  await options.beforeExternalCalls?.();
 
   const collectStartedAt = Date.now();
   const pool = await deps.collectCandidates({
