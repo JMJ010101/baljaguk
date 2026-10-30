@@ -54,7 +54,8 @@ src/
 ├─ components/ (Button.tsx, Header.tsx, Pagination.tsx, PlaceCard.tsx, PlaceImage.tsx, RefreshButton.tsx, StatusScreen.tsx, Tag.tsx, VisitCheckNotice.tsx, places/InfoRow.tsx, places/InfoSection.tsx, places/PlaceDetailStatus.tsx, places/PlaceDetailView.tsx, places/PlacesExplorer.tsx, places/PlacesStatus.tsx)
 ├─ lib/
 │  ├─ ai/ (client.ts, parse.ts, prompts/)
-│  ├─ tour/ (client.ts, normalize.ts, places.ts, placeDetail.ts, regions.ts, contentTypes.ts)
+│  ├─ tour/ (client.ts, normalize.ts, places.ts, placeDetail.ts, regions.ts, contentTypes.ts, candidates.ts)
+│  ├─ course/ (constants.ts, distance.ts, size.ts, types.ts)
 │  ├─ db/ (client.ts, courses.ts, placeCache.ts, usage.ts)
 │  ├─ personas/ (index.ts, pet.ts)
 │  ├─ errors.ts, errorResponse.ts, placeId.ts, placesQuery.ts, rateLimit.ts
@@ -113,6 +114,7 @@ db/migrations/
   - 타임아웃 (제안값): 관광공사 API 8초, OpenAI API 20초
 - 타임아웃 합계가 Vercel 함수 최대 실행 시간 안에 들어오는지 배포 전에 확인한다. (TODO(확인 필요): 현재 요금제의 최대 실행 시간)
 - 위 숫자는 각 파일 상단의 상수로만 정의한다. 코드 중간에 숫자를 직접 쓰지 않는다.
+  - 예외: Next.js route의 `export const maxDuration`은 route 파일 상단에 리터럴로 쓴다. 코스 route는 90(초)이고 코스 전체 예산(80초, lib/course/constants.ts)보다 크게 유지한다. 배포로 확인하기 전까지는 문서(Hobby와 Fluid Compute 기준 300초)를 근거로 한 가정이다.
 - 관광공사 API 응답 오류코드는 아래처럼 AppError로 변환한다.
   - 05(서비스 연결실패) → API_TIMEOUT
   - 22(서비스 요청제한횟수 초과) → RATE_LIMIT. (초당 초과 코드 23은 공공데이터포털 안내 페이지에만 있고 매뉴얼에는 없다.)
@@ -163,6 +165,7 @@ db/migrations/
   - 실제 호출로 확인한 acmpyTypeCd 값(샘플 8곳): `전구역 동반가능`, `일부구역 동반가능`. 다른 값이 있는지는 TODO(확인 필요)
   - 나머지 필드(acmpyPsblCpam, acmpyNeedMtr, etcAcmpyInfo, relaAcdntRiskMtr 등)는 장소마다 채워지는 항목이 다른 자유 텍스트다. 구역, 견종, 몸무게 조건이 여기에만 적혀 있다. etcAcmpyInfo에는 줄바꿈(\n)이 들어갈 수 있다.
   - hard 조건(제안): acmpyTypeCd 값이 있는 장소만 후보로 둔다. 구역, 견종, 몸무게 등 자유 텍스트 조건은 코드로 필터링하지 않고 soft 조건(AI 프롬프트)과 "방문 전 확인 필요" 안내로 처리한다.
+  - 코스 생성의 "선택한 유형마다 최소 1곳" hard 조건은 후보에 있는 유형에만 적용한다(사용자 결정, 2026-10-31). 후보가 없는 유형은 결과에 안내한다.
   - acmpyTypeCd가 빈 장소: 샘플 8곳에서는 없었다. 전체는 TODO(확인 필요)
 - 응답에 없는 필드를 추측해서 쓰지 않는다. 필드를 쓰기 전에 매뉴얼을 확인한다.
 - 응답은 반드시 normalize 함수로 우리 Place 타입으로 변환한 뒤 사용한다.
@@ -170,7 +173,8 @@ db/migrations/
   - 값이 없으면 빈 문자열("")로 온다. normalize에서 undefined로 바꾼다.
   - mapx는 경도, mapy는 위도다(WGS84). 순서를 뒤집지 않는다.
   - 좌표가 없는 장소는 코스 후보에서 제외한다. (제안)
-  - 코스 후보에서 숙박(32)과 행사(15)는 제외한다. 장소 탐색 화면에는 그대로 보여준다.
+  - 코스 후보에서 숙박(32), 행사(15), 쇼핑(38)은 제외한다. 허용 유형은 12, 14, 28, 39다(쇼핑은 사용자 결정, 데이터가 일반 상점 위주). 장소 탐색 화면에는 그대로 보여준다.
+  - 코스 후보는 유형별 지역 목록(areaBasedList2, 시도·시군구는 API 파라미터, numOfRows 500)을 받아 코드가 기준점에서의 거리를 계산해 고른다. 반경은 20km, 50km 순으로 넓히고 후보가 3곳 미만이면 INVALID_INPUT이다. 위치기반 조회(locationBasedList2)는 목록에 있는 장소를 절반도 찾지 못해(서울 관광지 5/10, 경북 1/10 등) 쓰지 않는다(호출 결과로 확인함, 2026-10-31).
   - petTourSyncList2를 쓰게 될 때만 showflag를 다룬다. (제안)
 - 원본 응답을 컴포넌트나 AI 프롬프트에 직접 넘기지 않는다.
 - 이미지의 cpyrhtDivCd가 Type3이면 변형(자르기, 필터 등)하지 않는다. 이미지에는 출처를 표시한다.
