@@ -68,6 +68,10 @@ type TourResponse = {
     header?: { resultCode?: string | number };
     body?: { items?: unknown; totalCount?: unknown };
   };
+  // 잘못된 서비스 키는 response가 아니라 이 모양으로 온다. (HTTP 403 + JSON, 호출 결과로 확인함)
+  OpenAPI_ServiceResponse?: {
+    cmmMsgHeader?: { returnReasonCode?: string | number };
+  };
 };
 
 async function requestTour(operation: string, params: Record<string, string>): Promise<TourResponse> {
@@ -90,9 +94,14 @@ async function requestTour(operation: string, params: Record<string, string>): P
     throw errorFromNonJson(text);
   }
 
-  // TODO(확인 필요): resultCode가 0000이 아닌 JSON 응답은 실제로 확인하지 못했다.
-  const resultCode = json?.response?.header?.resultCode;
-  if (resultCode !== undefined && Number(resultCode) !== 0) throw errorFromCode(resultCode);
+  // response.header가 없으면 오류 응답이다. cmmMsgHeader의 returnReasonCode를 같은 표로 변환한다.
+  // cmmMsgHeader도 없으면 코드가 없는 것이라 errorFromCode가 API_FAILED로 만든다.
+  // TODO(확인 필요): 이 JSON 오류 형태는 잘못된 서비스 키 한 경우에서만 확인했다. resultCode가 0000이 아닌 JSON 응답도 확인하지 못했다.
+  const header = json?.response?.header;
+  if (header === undefined) {
+    throw errorFromCode(json?.OpenAPI_ServiceResponse?.cmmMsgHeader?.returnReasonCode);
+  }
+  if (header.resultCode !== undefined && Number(header.resultCode) !== 0) throw errorFromCode(header.resultCode);
   return json;
 }
 

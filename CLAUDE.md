@@ -114,7 +114,7 @@ db/migrations/
   - 22(서비스 요청제한횟수 초과) → RATE_LIMIT. (초당 초과 코드 23은 공공데이터포털 안내 페이지에만 있고 매뉴얼에는 없다.)
   - 그 외 오류 → API_FAILED
   - 오류 코드 비교는 숫자로 한다(05, 0005, 5를 같게). 실제 응답에서 어떤 형태로 오는지는 확인하지 못했다.
-- 공공데이터포털 오류 응답은 _type=json을 줘도 XML로만 나온다. JSON 파싱에 실패하면 XML 오류 본문(returnReasonCode)을 확인한 뒤 위 표대로 변환한다.
+- 공공데이터포털 오류 응답은 _type=json을 줘도 XML로 올 수 있다. JSON 파싱에 실패하면 XML 오류 본문(returnReasonCode)을 확인한 뒤 위 표대로 변환한다. 잘못된 서비스 키는 HTTP 403 + JSON(OpenAPI_ServiceResponse.cmmMsgHeader, errMsg SERVICE_KEY_IS_NOT_REGISTERED_ERROR, returnReasonCode 30)으로 왔다(호출 결과로 확인함). response.header가 없는 응답은 cmmMsgHeader의 returnReasonCode를 위 표대로 변환하고, 둘 다 없으면 API_FAILED다. TODO(확인 필요): 이 JSON 형태는 잘못된 키 한 경우에서만 확인했다. 호출 한도 초과나 서비스 연결 실패 같은 다른 오류가 XML로 오는지 JSON으로 오는지는 확인하지 못했다.
 - 사용자에게는 상황별 안내 문구를 보여준다.
 - 내부 에러 내용(스택, 원본 메시지)은 사용자에게 노출하지 않는다.
 - AppError가 아닌 예외는 errorResponse.ts에서 API_FAILED(500)로 응답한다. 별도 코드는 만들지 않는다. (제안) 서버 로그에는 예외 이름만 남긴다.
