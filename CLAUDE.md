@@ -50,10 +50,10 @@
 ```
 src/
 ├─ app/ (page.tsx, places/, places/[id]/, course/new/, course/[id]/, lab/, about/, error.tsx, not-found.tsx)
-├─ app/api/ (places/route.ts, places/[id]/route.ts, course/route.ts)
+├─ app/api/ (places/route.ts, places/[id]/route.ts, regions/route.ts, course/route.ts)
 ├─ lib/
 │  ├─ ai/ (client.ts, parse.ts, prompts/)
-│  ├─ tour/ (client.ts, normalize.ts, places.ts, placeDetail.ts)
+│  ├─ tour/ (client.ts, normalize.ts, places.ts, placeDetail.ts, regions.ts)
 │  ├─ db/ (client.ts, courses.ts, placeCache.ts, usage.ts)
 │  ├─ personas/ (index.ts, pet.ts)
 │  ├─ errors.ts, errorResponse.ts, rateLimit.ts
@@ -61,17 +61,19 @@ src/
 db/migrations/
 ```
 - route.ts는 얇게 유지한다. 로직은 lib/에 둔다.
-- lib/tour/: client.ts는 외부 API 호출, normalize.ts는 응답 변환만 담당한다.
+- lib/tour/: client.ts는 외부 API 호출, normalize.ts는 응답 변환만 담당한다. 캐시 조회·저장은 lib/db/placeCache.ts가 담당하고, 서비스 함수(placeDetail.ts)가 그것을 호출한다.
 - places.ts는 둘을 엮어 목록을 만드는 서비스 함수다. 항목별 normalize 실패는 건너뛰고 skipped를 센다. 외부 호출이나 변환 로직을 places.ts에 직접 쓰지 않는다.
-- placeDetail.ts(상세)도 둘을 엮는 서비스 함수다. 외부 호출이나 변환 로직을 직접 쓰지 않는다. 흐름: 캐시 확인 → detailCommon2 → detailPetTour2와 detailIntro2(동시) → 저장.
+- placeDetail.ts(상세)는 client.ts, normalize.ts, lib/db/placeCache.ts를 엮는 서비스 함수다. 외부 호출, 변환, 쿼리 로직을 직접 쓰지 않는다. 흐름: 캐시 확인(placeCache) → detailCommon2 → detailPetTour2와 detailIntro2(동시) → 캐시 저장(placeCache).
+- regions.ts(지역)는 client.ts의 fetchLdongCodes(ldongCode2 호출)로 시도·시군구 목록을 만드는 서비스 함수다. getSidoList(), getSigunguList(sidoCode)를 제공하고, 항목은 types/index.ts의 Region({ code, name })으로 검증하며 실패한 항목은 건너뛰고 skipped를 센다. sido 검증 패턴은 1~5자리 숫자이고, 시군구 결과가 비면 INVALID_INPUT 404를 던진다.
+- app/api/regions/route.ts: GET /api/regions는 시도 목록, GET /api/regions?sido=11은 그 시도의 시군구 목록이다. sido가 패턴에 맞지 않으면 INVALID_INPUT 400이다.
 - db/migrations/ 에는 번호를 붙인 SQL 파일만 둔다.
 - 한 파일에 로직을 몰아넣지 않는다.
 
 ## 보안 규칙
 - OpenAI 키, 관광공사 API 키, Supabase secret 키(sb_secret_...)는 서버 코드에서만 사용한다.
 - 위 키에는 NEXT_PUBLIC_ 접두사를 절대 붙이지 않는다.
-- Supabase 환경변수 이름은 SUPABASE_URL, SUPABASE_SECRET_KEY다. 둘 다 NEXT_PUBLIC_ 접두사를 붙이지 않는다.
-- Supabase 공식 문서는 service_role 키가 레거시이며 2026년 말까지 폐지 예정이라고 안내한다.
+- 서버에서 읽는 환경변수 이름은 SUPABASE_URL, SUPABASE_SECRET_KEY, TOUR_API_KEY다. 모두 NEXT_PUBLIC_ 접두사를 붙이지 않는다.
+- Supabase는 secret 키(sb_secret_...)를 쓴다. 레거시 service_role 키는 쓰지 않는다.
 - publishable 키는 로그인을 만들기 전까지 쓰지 않는다. 브라우저에서 Supabase를 직접 호출하지 않는다.
 - 카카오 JavaScript 키는 브라우저에서 쓰는 키이므로 이 규칙의 예외다. 대신 JavaScript SDK 도메인 등록으로 사용 범위를 제한한다.
 - 카카오 REST API 키는 서버 전용이다. NEXT_PUBLIC_ 접두사를 붙이지 않는다.
@@ -135,13 +137,16 @@ db/migrations/
   - 실제 호출로 확인한 목록 필드: addr1, addr2, areacode, cat1~cat3, contentid, contenttypeid, createdtime, firstimage, firstimage2, cpyrhtDivCd, mapx, mapy, mlevel, modifiedtime, sigungucode, tel, title, zipcode, lDongRegnCd, lDongSignguCd, lclsSystm1~lclsSystm3
   - showflag는 목록(areaBasedList2) 응답에 없다.
   - 목록 호출(areaBasedList2)은 numOfRows, pageNo와 선택 파라미터 contentTypeId(12, 14, 15, 28, 32, 38, 39만 허용), arrange(A, C, D, O, Q, R만 허용)를 쓴다. zod로 검증하고 위반하면 INVALID_INPUT(400)이다.
-  - totalCount (호출 결과로 확인함): 응답 body.totalCount는 contentTypeId 필터를 반영한다(파라미터 없음 9658, contentTypeId=12 753). numOfRows가 바뀌어도 변하지 않는다.
+  - totalCount (호출 결과로 확인함): 응답 body.totalCount는 contentTypeId 필터를 반영한다(파라미터 없음 9658(호출 시점의 값), contentTypeId=12 753). numOfRows가 바뀌어도 변하지 않는다.
   - contentTypeId=12, numOfRows=5에서 pageNo=151은 3건, 152는 0건이었다(753건과 일치). 파라미터 없는 호출의 마지막 페이지는 확인하지 못했다.
   - 응답 body.numOfRows는 요청값이 아니라 실제 반환 건수로 온다(호출 결과로 확인함). 페이지 크기로 쓰지 않는다.
   - arrange (호출 결과로 확인함, 매뉴얼에 기본값 설명은 없음): arrange=Q는 수정일 내림차순으로 정렬되었고 50건 중 firstimage가 없는 건이 0건이었다(파라미터 없는 호출은 4건). 매뉴얼 설명은 "대표이미지가 반드시 있는 정렬"이다. O, R은 호출해 본 적이 없다.
-  - arrange=Q에서도 totalCount는 줄지 않았다(9658). arrange가 O/Q/R일 때 totalCount로 페이지 수를 계산하지 않는다.
+  - arrange=Q에서도 totalCount는 줄지 않았다(9658, 호출 시점의 값). arrange가 O/Q/R일 때 totalCount로 페이지 수를 계산하지 않는다.
   - 파라미터 없는 호출의 기본 정렬은 수정일 순서가 아니었다.
-  - 지역 파라미터 (매뉴얼 확인): areaCode가 아니라 lDongRegnCd(시도), lDongSignguCd(시군구, lDongRegnCd 필수), lclsSystm1~3이다. 코드 값 목록은 법정동 코드 조회 오퍼레이션(ldongCode2)을 확인해야 한다. TODO(확인 필요)
+  - 지역 파라미터 (매뉴얼 확인): areaCode가 아니라 lDongRegnCd(시도), lDongSignguCd(시군구, lDongRegnCd 필수), lclsSystm1~3이다. 이번 단계에서는 구현하지 않는다(목록 호출에 지역 파라미터를 보내지 않음). 확인됨(docs/manual.docx 오퍼레이션 10): lDongRegnCd 없으면 시도 목록, 있으면 그 시도의 시군구 목록. 응답은 code, name
+  - lDongListYn=Y에서 lDongRegnCd를 생략했을 때의 동작은 확인 필요
+  - 탐색 화면의 지역 필터는 선택이다. 코스 생성에서는 시도(lDongRegnCd)를 필수로 받고, 시군구(lDongSignguCd)는 선택이다.
+  - 세종특별자치시의 시도 코드는 5자리(36110)다. 다른 시도는 2자리다. (호출 결과로 확인함, 2026-10-30, 시도 16개) 그래서 시도 코드 검증은 2자리가 아니라 1~5자리 숫자다.
 - 동반 조건은 detailPetTour2(acmpyTypeCd, acmpyPsblCpam, acmpyNeedMtr, etcAcmpyInfo 등), 운영시간은 detailIntro2(타입별로 필드명이 다르다)로 장소마다 따로 조회해야 한다.
 - 운영시간 필드명은 타입마다 다르다. 쇼핑(38)은 opentime이고, 형식이 일정하지 않다(`09:00-20:00`, `09:00~22:00`). 파싱하지 말고 문자열 그대로 보여준다.
 - detailIntro2는 contentTypeId를 항상 함께 보낸다. contentTypeId는 필수다(매뉴얼 확인). (호출 결과로 확인함: 포함하면 4곳 모두 성공, 뺀 1곳은 정상 응답을 받지 못했다.)
