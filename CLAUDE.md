@@ -49,15 +49,15 @@
 ## 폴더 구조
 ```
 src/
-├─ app/ (page.tsx, places/page.tsx, places/[id]/, course/new/, course/[id]/, lab/, about/, error.tsx, not-found.tsx)
+├─ app/ (page.tsx, places/page.tsx, places/[id]/page.tsx, places/[id]/loading.tsx, course/new/, course/[id]/, lab/, about/, error.tsx, not-found.tsx)
 ├─ app/api/ (places/route.ts, places/[id]/route.ts, regions/route.ts, course/route.ts)
-├─ components/ (Button.tsx, Header.tsx, Pagination.tsx, PlaceCard.tsx, PlaceThumbnail.tsx, StatusScreen.tsx, Tag.tsx, VisitCheckNotice.tsx, places/PlacesExplorer.tsx, places/PlacesStatus.tsx)
+├─ components/ (Button.tsx, Header.tsx, Pagination.tsx, PlaceCard.tsx, PlaceImage.tsx, RefreshButton.tsx, StatusScreen.tsx, Tag.tsx, VisitCheckNotice.tsx, places/InfoRow.tsx, places/InfoSection.tsx, places/PlaceDetailStatus.tsx, places/PlaceDetailView.tsx, places/PlacesExplorer.tsx, places/PlacesStatus.tsx)
 ├─ lib/
 │  ├─ ai/ (client.ts, parse.ts, prompts/)
 │  ├─ tour/ (client.ts, normalize.ts, places.ts, placeDetail.ts, regions.ts, contentTypes.ts)
 │  ├─ db/ (client.ts, courses.ts, placeCache.ts, usage.ts)
 │  ├─ personas/ (index.ts, pet.ts)
-│  ├─ errors.ts, errorResponse.ts, placesQuery.ts, rateLimit.ts
+│  ├─ errors.ts, errorResponse.ts, placeId.ts, placesQuery.ts, rateLimit.ts
 └─ types/index.ts
 db/migrations/
 ```
@@ -69,6 +69,7 @@ db/migrations/
 - app/api/regions/route.ts: GET /api/regions는 시도 목록, GET /api/regions?sido=11은 그 시도의 시군구 목록이다. sido가 패턴에 맞지 않으면 INVALID_INPUT 400이다.
 - 장소 탐색 화면(app/places/page.tsx)은 서버 컴포넌트에서 getSidoList()로 시도 목록을 가져와 클라이언트 컴포넌트(PlacesExplorer)에 내려 주고, 장소 목록은 선택 값이 바뀔 때 /api/places를 호출한다. 선택 값은 URL 쿼리(?sido=&type=&page=)에 둔다. 기본값(type=12, page=1)은 URL에서 생략하고, 한 페이지는 PAGE_SIZE=20(lib/placesQuery.ts)이다. 허용 타입과 이름은 lib/tour/contentTypes.ts 한 곳에서 정의한다.
 - 장소 카드(PlaceCard)에는 "방문 전 확인 필요"를 넣지 않는다. 카드는 동반 조건이나 영업시간을 보여 주지 않기 때문이다. 상세 화면에서 쓴다.
+- 장소 상세(app/places/[id]/page.tsx)는 서버 컴포넌트에서 getPlaceDetail()을 직접 호출한다. 자기 API(/api/places/[id])를 다시 부르지 않는다. "목록으로" 링크는 sido/type/page 쿼리를 유지한다. 목록의 카드 링크가 같은 쿼리를 상세 주소에 실어 보낸다.
 - db/migrations/ 에는 번호를 붙인 SQL 파일만 둔다.
 - 한 파일에 로직을 몰아넣지 않는다.
 
@@ -153,8 +154,9 @@ db/migrations/
 - 동반 조건은 detailPetTour2(acmpyTypeCd, acmpyPsblCpam, acmpyNeedMtr, etcAcmpyInfo 등), 운영시간은 detailIntro2(타입별로 필드명이 다르다)로 장소마다 따로 조회해야 한다.
 - 운영시간 필드명은 타입마다 다르다. 쇼핑(38)은 opentime이고, 형식이 일정하지 않다(`09:00-20:00`, `09:00~22:00`). 파싱하지 말고 문자열 그대로 보여준다.
 - detailIntro2는 contentTypeId를 항상 함께 보낸다. contentTypeId는 필수다(매뉴얼 확인). (호출 결과로 확인함: 포함하면 4곳 모두 성공, 뺀 1곳은 정상 응답을 받지 못했다.)
-- detailIntro2 응답 필드는 타입마다 다르다. 호출 결과로 확인한 타입은 12, 32, 38, 39뿐이다. TODO(확인 필요): 28, 14, 15
+- detailIntro2 응답 필드는 타입마다 다르다. 호출 결과로 확인한 타입은 12, 14, 28, 32, 38, 39다(14, 28은 각 1곳). TODO(확인 필요): 15
 - 운영시간 필드(호출 결과로 본 이름, 의미는 매뉴얼 미확인): 12 usetime / 38 opentime / 39 opentimefood. 쉬는 날: 12 restdate / 38 restdateshopping / 39 restdatefood. 파싱하지 않고 문자열 그대로 보여준다. 12의 usetime에는 숙박 형태 문장이 들어 있는 경우가 있었다.
+- 14, 28의 운영시간·쉬는 날 필드(14 usetimeculture/restdateculture, 28 usetimeleports/restdateleports)는 각 1곳 호출로 확인했다. 15, 32는 이용시간·쉬는 날 개념이 달라 이번 화면에서는 보여 주지 않고, 상세 화면에서 운영시간 행을 숨기고 안내 문구를 쓴다.
 - chkpet, chkpetshopping은 비어 있었고 의미를 확인하지 못했다. 동반 조건에 쓰지 않는다. 동반 정보 출처는 detailPetTour2뿐이다.
 - reservationurl 등에는 HTML 태그(`<a>`)가 섞여 있을 수 있다. detailCommon2의 homepage에도 섞인 경우가 있었다(샘플 1곳). 화면에 그대로 렌더링하지 않는다.
 - 위 동반 정보 필드는 모두 선택 항목이고 매뉴얼 예시상 자유 텍스트다. 값이 없으면 빈 문자열("")로 온다.
@@ -172,6 +174,7 @@ db/migrations/
   - petTourSyncList2를 쓰게 될 때만 showflag를 다룬다. (제안)
 - 원본 응답을 컴포넌트나 AI 프롬프트에 직접 넘기지 않는다.
 - 이미지의 cpyrhtDivCd가 Type3이면 변형(자르기, 필터 등)하지 않는다. 이미지에는 출처를 표시한다.
+- cpyrhtDivCd는 매뉴얼에서 Type1 "출처표시-권장", Type3 "제1유형 + 변경금지"만 확인했다. TODO(확인 필요): 출처 표시가 필수인지, 공공누리 이용 조건의 범위. 상세 화면에는 "사진 출처:" 문구를 쓰지 않는다.
 - contentTypeId: 코드표는 12(관광지), 14(문화시설), 15(행사/공연/축제), 28(레포츠), 32(숙박), 38(쇼핑), 39(음식점)이다. 단, 목록·소개 조회의 파라미터 설명에는 75, 76 등 다른 값이 적혀 있어 문서가 서로 맞지 않는다.
   - 실제 호출 결과 12, 28, 32, 38, 39가 나왔고 75, 76은 나오지 않았다. 코드표(12 계열)를 따른다. 75, 76으로 직접 호출해 보지는 않았다.
   - TODO(확인 필요): 14(문화시설), 15(행사/공연/축제)는 아직 확인하지 못했다.
@@ -180,6 +183,7 @@ db/migrations/
 - detailCommon2(공통정보)는 contentId만 보내 샘플 4곳(12, 32, 38, 39)에서 정상 응답을 받았다. 매뉴얼 확인(Ver4.1): 요청은 serviceKey, MobileOS, MobileApp, contentId가 필수이고 contentTypeId는 요청 항목에 없어 보내지 않는다. 호출 결과로 확인함: 12, 32, 39 세 곳에서 items.item은 길이 1의 배열이고, title, addr1, mapx, mapy, firstimage, cpyrhtDivCd는 세 곳 모두 값이 있었다(38은 getPlaceDetail로 normalizePlace 통과와 title, 좌표, 이미지, cpyrhtDivCd 값 유무만 확인했다). 목록 필드에 없는 것은 telname, homepage, overview다. tel, telname, addr2 등은 장소마다 비어 있었다. 필드명과 의미는 매뉴얼 확인. 단 cat1~3은 매뉴얼 응답 표에 없지만 실제 응답에는 온다(호출 결과로 확인함). 호출 결과로 확인함: normalizePlace가 detailCommon2 응답에 그대로 통했다(표본 4곳). 존재하지 않는 contentId는 오류가 아니라 resultCode 0000의 빈 items로 온다(getPlaceDetail의 404 처리 근거).
 - detailCommon2로 상세 화면의 Place를 만든다. 선택 항목(주소, 이미지, 좌표 등)은 비어 있을 수 있어 optional로 처리한다. 표본이 4곳이라 항상 값이 있다고 단정하지 않는다.
 - 캐시 만료 기간 (제안값): 24시간. 매뉴얼의 데이터 갱신주기가 일 1회다. (공공데이터포털 페이지에는 "실시간"이라고 적혀 있어 두 자료가 다르다.)
+- 알려진 제약: 상세 조회에서 detailPetTour2나 detailIntro2가 빈 응답을 주면 모든 필드가 비어 있는 상세로 만들어 place_cache에 저장한다. 일시적인 빈 응답이어도 만료(24시간)까지 "정보 없음"으로 보일 수 있다.
 
 ## 작업 방식
 - 한 번에 한 기능씩 구현한다.
