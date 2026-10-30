@@ -1,5 +1,6 @@
-// isDbTimeoutError의 판별 기준을 고정하는 단위 테스트다. 실행: npx tsx --conditions=react-server --test src/lib/db/errors.test.ts
-// (프로젝트에 테스트 스크립트가 없어서 package.json에는 추가하지 않았다. CLAUDE.md: 스크립트 추가는 먼저 알린다)
+// isDbTimeoutError의 판별 기준을 고정하는 단위 테스트다.
+// 실행: npx -y tsx@4.23.12 --conditions=react-server --test src/lib/db/errors.test.ts
+// tsx는 프로젝트에 설치하지 않고 npx로만 쓴다. package.json에 test 스크립트는 추가하지 않는다. (사용자 결정, 2026-10-31)
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { isDbTimeoutError } from "@/lib/db/errors";
