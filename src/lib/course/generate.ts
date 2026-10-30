@@ -15,6 +15,7 @@ import {
   MIN_POOL,
 } from "@/lib/course/constants";
 import { parseCourseRequest } from "@/lib/course/input";
+import { regionNameFromAddress } from "@/lib/course/regionName";
 import type { MissingType } from "@/lib/course/types";
 import { createCourse, type CourseInputSnapshot } from "@/lib/db/courses";
 import { deadlineExceededError, remainingMs } from "@/lib/deadline";
@@ -57,9 +58,9 @@ export type GenerateResult = {
 
 // 기준점 주소의 앞부분에서 지역 이름을 뽑는다. (시도만 고르면 첫 토큰, 시군구까지 고르면 앞 두 토큰) 주소가 없으면 지역 코드로 대신한다.
 export function deriveRegionName(address: string | undefined, sido: string, sigungu?: string): string {
-  const tokens = address?.trim().split(/\s+/).filter(Boolean) ?? [];
-  if (tokens.length === 0) return sigungu === undefined ? `지역 코드 ${sido}` : `지역 코드 ${sido}-${sigungu}`;
-  return sigungu === undefined ? tokens[0] : tokens.slice(0, 2).join(" ");
+  const name = regionNameFromAddress(address, sigungu !== undefined);
+  if (name !== undefined) return name;
+  return sigungu === undefined ? `지역 코드 ${sido}` : `지역 코드 ${sido}-${sigungu}`;
 }
 
 export async function generateCourse(

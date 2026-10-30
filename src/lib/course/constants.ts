@@ -29,3 +29,9 @@ export const COURSE_BUDGET_MS = 80_000;
 export const COURSE_SAVE_RESERVE_MS = 10_000;
 // 상세 확인 한 라운드의 최악 시간이다. 관광공사 타임아웃 8초 x 직렬 2단계(detailCommon2 -> detailPetTour2와 detailIntro2).
 export const COURSE_VERIFY_ROUND_MS = 16_000;
+
+// 화면(클라이언트)
+// 코스 생성 요청을 기다리는 최대 시간이다. 서버 마감(COURSE_BUDGET_MS)과 route의 maxDuration(90초)보다 길게 둬서 서버의 응답이 먼저 오게 한다.
+export const COURSE_CLIENT_WAIT_MS = 100_000;
+// 생성 중 진행 안내 문구가 바뀌는 경과 시간이다. 임시값이며 실제 서버 단계와 연결하지 않는다.
+export const PROGRESS_STAGE_START_MS: readonly number[] = [0, 10_000, 30_000, 60_000];

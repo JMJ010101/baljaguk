@@ -20,11 +20,16 @@ const typesSchema = z
   .refine((ids) => new Set(ids).size === ids.length, "중복된 유형")
   .refine((ids) => ids.every((id) => COURSE_CONTENT_TYPE_IDS.includes(id)), "허용하지 않는 유형");
 
-// 줄바꿈과 반복 공백을 한 칸으로 줄인 뒤 길이를 본다. 넘으면 자르지 않고 거절한다. 빈 문자열은 없는 것으로 본다.
+// 줄바꿈과 반복 공백을 한 칸으로 줄인다. 길이는 이 결과로 본다. 폼의 글자 수 표시도 같은 함수를 쓴다.
+export function normalizeMood(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
+}
+
+// 정리한 뒤 길이를 본다. 넘으면 자르지 않고 거절한다. 빈 문자열은 없는 것으로 본다.
 const moodSchema = z
   .string()
   .max(MOOD_RAW_MAX_LENGTH)
-  .transform((text) => text.replace(/\s+/g, " ").trim())
+  .transform(normalizeMood)
   .pipe(z.string().max(MOOD_MAX_LENGTH))
   .transform((text) => (text === "" ? undefined : text));
 
