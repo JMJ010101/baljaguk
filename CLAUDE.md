@@ -55,10 +55,10 @@ src/
 ├─ lib/
 │  ├─ ai/ (client.ts, parse.ts, picks.ts, constants.ts, types.ts, prompts/)
 │  ├─ tour/ (client.ts, normalize.ts, places.ts, placeDetail.ts, regions.ts, contentTypes.ts, candidates.ts)
-│  ├─ course/ (constants.ts, distance.ts, size.ts, types.ts)
-│  ├─ db/ (client.ts, courses.ts, placeCache.ts, usage.ts)
+│  ├─ course/ (assemble.ts, constants.ts, distance.ts, generate.ts, input.ts, size.ts, types.ts)
+│  ├─ db/ (client.ts, courses.ts, errors.ts, placeCache.ts, usage.ts)
 │  ├─ personas/ (index.ts, pet.ts)
-│  ├─ errors.ts, errorResponse.ts, placeId.ts, placesQuery.ts, rateLimit.ts
+│  ├─ errors.ts, errorResponse.ts, deadline.ts, placeId.ts, placesQuery.ts, rateLimit.ts
 └─ types/index.ts
 db/migrations/
 ```
@@ -98,7 +98,7 @@ db/migrations/
 - 로그인은 아직 없다. 나중을 위해 courses.owner_id를 유지한다.
 - JSONB로 저장한 데이터는 읽을 때 zod로 다시 검증한다.
 - 컬럼 초안 (제안값, 첫 마이그레이션 작성 시 확정한다):
-  - courses: id(uuid, PK), owner_id(uuid, NULL 허용), input(jsonb, 사용자 조건과 고정 기본 프로필 스냅샷, 기준점 placeId), result(jsonb, 순서가 있는 placeId 목록), prompt_version(text), created_at
+  - courses: id(uuid, PK), owner_id(uuid, NULL 허용), input(jsonb, 사용자 조건과 고정 기본 프로필 스냅샷, 기준점 placeId와 반경, 후보 없던 유형(missingTypes)), result(jsonb, 순서가 있는 placeId 목록), prompt_version(text), created_at
   - place_cache: place_id(text, PK), data(jsonb, { place: Place, detail: PlaceDetail }), fetched_at, expires_at
   - usage_log: id, ip_hash(text), endpoint(text), created_at
 - 컬럼을 위 초안에 임의로 추가하지 않는다. 필요하면 새 마이그레이션 파일로 추가한다.
