@@ -21,6 +21,7 @@ export async function getPlaces(params: {
   pageNo: number;
   contentTypeId?: number;
   arrange?: string;
+  lDongRegnCd?: string;
 }): Promise<PlacesResult> {
   const { items, totalCount } = await fetchAreaBasedList(params);
   const places: Place[] = [];

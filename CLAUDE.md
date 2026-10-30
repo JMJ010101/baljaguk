@@ -143,7 +143,7 @@ db/migrations/
   - arrange (호출 결과로 확인함, 매뉴얼에 기본값 설명은 없음): arrange=Q는 수정일 내림차순으로 정렬되었고 50건 중 firstimage가 없는 건이 0건이었다(파라미터 없는 호출은 4건). 매뉴얼 설명은 "대표이미지가 반드시 있는 정렬"이다. O, R은 호출해 본 적이 없다.
   - arrange=Q에서도 totalCount는 줄지 않았다(9658, 호출 시점의 값). arrange가 O/Q/R일 때 totalCount로 페이지 수를 계산하지 않는다.
   - 파라미터 없는 호출의 기본 정렬은 수정일 순서가 아니었다.
-  - 지역 파라미터 (매뉴얼 확인): areaCode가 아니라 lDongRegnCd(시도), lDongSignguCd(시군구, lDongRegnCd 필수), lclsSystm1~3이다. 이번 단계에서는 구현하지 않는다(목록 호출에 지역 파라미터를 보내지 않음). 확인됨(docs/manual.docx 오퍼레이션 10): lDongRegnCd 없으면 시도 목록, 있으면 그 시도의 시군구 목록. 응답은 code, name
+  - 지역 파라미터 (매뉴얼 확인): areaCode가 아니라 lDongRegnCd(시도), lDongSignguCd(시군구, lDongRegnCd 필수), lclsSystm1~3이다. 이번 단계에서는 lDongRegnCd(시도)만 목록 호출에 보낸다(앱 쪽 쿼리 이름은 sido). lDongSignguCd와 lclsSystm1~3은 구현하지 않는다. 확인됨(docs/manual.docx 오퍼레이션 10): lDongRegnCd 없으면 시도 목록, 있으면 그 시도의 시군구 목록. 응답은 code, name
   - lDongListYn=Y에서 lDongRegnCd를 생략했을 때의 동작은 확인 필요
   - 탐색 화면의 지역 필터는 선택이다. 코스 생성에서는 시도(lDongRegnCd)를 필수로 받고, 시군구(lDongSignguCd)는 선택이다.
   - 세종특별자치시의 시도 코드는 5자리(36110)다. 다른 시도는 2자리다. (호출 결과로 확인함, 2026-10-30, 시도 16개) 그래서 시도 코드 검증은 2자리가 아니라 1~5자리 숫자다.
