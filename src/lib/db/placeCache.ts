@@ -21,6 +21,8 @@ const placeSchema = z.object({
   imageUrl: z.string().optional(),
   imageCopyright: z.string().optional(),
   modifiedTime: z.string().optional(),
+  sidoCode: z.string().optional(),
+  sigunguCode: z.string().optional(),
 }) satisfies z.ZodType<Place>;
 
 const placeDetailSchema = z.object({
@@ -34,7 +36,8 @@ const placeDetailSchema = z.object({
   rest: z.string().optional(),
 }) satisfies z.ZodType<PlaceDetail>;
 
-const cachedPlaceSchema = z.object({
+// 기존 캐시 행이 스키마 변경 뒤에도 통과하는지 임시 스크립트로 확인할 수 있게 내보낸다.
+export const cachedPlaceSchema = z.object({
   place: placeSchema,
   detail: placeDetailSchema,
 });

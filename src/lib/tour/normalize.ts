@@ -122,6 +122,8 @@ export function normalizePlace(raw: unknown): Place {
     imageUrl: emptyToUndefined(item.firstimage),
     imageCopyright: emptyToUndefined(item.cpyrhtDivCd),
     modifiedTime: emptyToUndefined(item.modifiedtime),
+    sidoCode: emptyToUndefined(item.lDongRegnCd),
+    sigunguCode: emptyToUndefined(item.lDongSignguCd),
   };
 }
 

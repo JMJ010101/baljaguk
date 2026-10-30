@@ -12,6 +12,10 @@ export type Place = {
   // 이미지 저작권 구분(cpyrhtDivCd). 값을 그대로 보관만 한다.
   imageCopyright?: string;
   modifiedTime?: string;
+  // 법정동 시도 코드와 시군구 코드(lDongRegnCd, lDongSignguCd). 응답에 값이 있을 때만 있다.
+  // 기준점으로부터의 거리는 장소의 속성이 아니라서 여기에 두지 않는다. (lib/course/types.ts의 CourseCandidate)
+  sidoCode?: string;
+  sigunguCode?: string;
 };
 
 // 법정동 코드 조회(ldongCode2)를 normalize한 결과다. 시도 목록이면 시도, 시군구 목록이면 시군구의 코드와 이름이다.
