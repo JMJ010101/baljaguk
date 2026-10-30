@@ -1,5 +1,5 @@
 import Link from "next/link";
-import PlaceThumbnail from "@/components/PlaceThumbnail";
+import PlaceImage from "@/components/PlaceImage";
 import Tag from "@/components/Tag";
 import { getContentTypeLabel } from "@/lib/tour/contentTypes";
 import type { Place } from "@/types";
@@ -11,7 +11,7 @@ export default function PlaceCard({ place, href }: { place: Place; href: string 
   return (
     <Link href={href} className="block rounded-card bg-surface p-4 shadow-card">
       <article className="flex gap-4">
-        <PlaceThumbnail imageUrl={place.imageUrl} />
+        <PlaceImage size="thumbnail" imageUrl={place.imageUrl} copyright={place.imageCopyright} />
         <div className="flex min-w-0 flex-1 flex-col items-start gap-2">
           <h2 className="text-lg font-bold">{place.title}</h2>
           {place.address !== undefined && (
