@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import PlaceDetailStatus from "@/components/places/PlaceDetailStatus";
 import PlaceDetailView from "@/components/places/PlaceDetailView";
 import { AppError } from "@/lib/errors";
 import { parsePlaceId } from "@/lib/placeId";
 import { buildPlacesHref, parseBackQuery } from "@/lib/placesQuery";
+import { enforcePlacesRateLimit } from "@/lib/rateLimit";
 import { getPlaceDetail } from "@/lib/tour/placeDetail";
 
 export const metadata: Metadata = {
@@ -13,19 +15,23 @@ export const metadata: Metadata = {
 
 type LoadResult =
   | { ok: true; data: Awaited<ReturnType<typeof getPlaceDetail>> }
-  | { ok: false; code: string };
+  | { ok: false; code: string; message: string };
 
 // 조회와 오류 분류만 한다. (react-hooks/error-boundaries 때문에 JSX는 try 밖에서 만든다.)
-async function loadDetail(placeId: number): Promise<LoadResult> {
+// 캐시에 없어서 관광공사를 부를 때만 호출 한도를 센다. (캐시 적중은 세지 않는다)
+async function loadDetail(placeId: number, requestHeaders: Headers): Promise<LoadResult> {
   try {
-    return { ok: true, data: await getPlaceDetail(placeId) };
+    return {
+      ok: true,
+      data: await getPlaceDetail(placeId, { beforeTourCalls: () => enforcePlacesRateLimit(requestHeaders) }),
+    };
   } catch (e) {
     // AppError가 아닌 예외는 app/error.tsx에 맡긴다.
     if (!(e instanceof AppError)) throw e;
     // 존재하지 않는 장소(404)와 올바르지 않은 id(400)는 둘 다 "유효하지 않은 링크"다.
     if (e.code === "INVALID_INPUT") notFound();
     console.error("장소 상세 조회 실패:", e.code);
-    return { ok: false, code: e.code };
+    return { ok: false, code: e.code, message: e.userMessage };
   }
 }
 
@@ -44,7 +50,7 @@ export default async function PlaceDetailPage({ params, searchParams }: PageProp
   const placeId = parsePlaceId(id);
   if (placeId === undefined) notFound();
 
-  const result = await loadDetail(placeId);
-  if (!result.ok) return <PlaceDetailStatus code={result.code} backHref={backHref} />;
+  const result = await loadDetail(placeId, await headers());
+  if (!result.ok) return <PlaceDetailStatus code={result.code} message={result.message} backHref={backHref} />;
   return <PlaceDetailView place={result.data.place} detail={result.data.detail} backHref={backHref} />;
 }

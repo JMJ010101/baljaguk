@@ -21,13 +21,14 @@ const warningIcon = (
   </svg>
 );
 
-export default function PlaceDetailStatus({ code, backHref }: { code: string; backHref: string }) {
+// message는 서버가 준 사용자용 문구다. 분당 한도와 하루 한도의 문구가 달라서 한도 초과 화면은 이 문구를 그대로 보여 준다.
+export default function PlaceDetailStatus({ code, message, backHref }: { code: string; message: string; backHref: string }) {
   if (code === "RATE_LIMIT") {
     return (
       <StatusScreen
         icon={warningIcon}
         title="조회 가능 횟수를 넘었어요"
-        description="오늘 장소 조회 가능 횟수를 넘었어요. 내일 다시 시도해 주세요."
+        description={message}
       >
         <Button href={backHref}>목록으로</Button>
       </StatusScreen>
