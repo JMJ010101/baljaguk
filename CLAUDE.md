@@ -2,7 +2,7 @@
 
 ## 프로젝트 개요
 - 이름: 발자국
-- 소개: 반려동물과 함께 갈 수 있는 장소만으로 하루 여행 코스를 만들어주는 서비스
+- 소개: 반려동물 동반 정보가 있는 장소로 하루 여행 코스를 만들어주는 서비스
 - 목적: 5~6일 안에 만드는 개인 프로젝트이자 포트폴리오다. 구조 설계, 오류 처리, 프롬프트 버전 비교를 보여주는 것이 목표다.
 - 개발 방식: 바이브코딩 (Claude Code + VS Code)
 
@@ -29,6 +29,7 @@
 ## 빌드/실행 명령어
 - 개발 서버 `npm run dev` / 빌드 `npm run build` / 빌드 결과 실행 `npm run start` / 린트 `npm run lint`
 - 테스트 스크립트는 없다. package.json에 없는 스크립트는 지어내서 실행하지 않는다. 추가가 필요하면 먼저 나에게 알린다.
+- 테스트 파일(*.test.ts)은 각 파일 상단 주석의 명령으로 실행한다: `npx -y tsx@4.23.12 --conditions=react-server --test <테스트 파일 경로>`
 - 기능 하나를 끝낼 때마다 `npm run lint`와 `npm run build`가 통과하는지 확인한다.
 
 ## 핵심 설계 원칙
@@ -49,13 +50,13 @@
 ## 폴더 구조
 ```
 src/
-├─ app/ (page.tsx, places/page.tsx, places/[id]/page.tsx, places/[id]/loading.tsx, course/new/, course/[id]/, lab/, about/, error.tsx, not-found.tsx)
+├─ app/ (page.tsx, places/page.tsx, places/[id]/page.tsx, places/[id]/loading.tsx, course/new/page.tsx, course/[id]/page.tsx, course/[id]/loading.tsx, course/[id]/not-found.tsx, lab/ (예정, 미구현), about/ (예정, 미구현), error.tsx, not-found.tsx)
 ├─ app/api/ (places/route.ts, places/[id]/route.ts, regions/route.ts, course/route.ts)
-├─ components/ (Button.tsx, Header.tsx, Pagination.tsx, PlaceCard.tsx, PlaceImage.tsx, RefreshButton.tsx, StatusScreen.tsx, Tag.tsx, VisitCheckNotice.tsx, places/InfoRow.tsx, places/InfoSection.tsx, places/PlaceDetailStatus.tsx, places/PlaceDetailView.tsx, places/PlacesExplorer.tsx, places/PlacesStatus.tsx)
+├─ components/ (Button.tsx, Header.tsx, Pagination.tsx, PlaceCard.tsx, PlaceImage.tsx, RefreshButton.tsx, StatusScreen.tsx, Tag.tsx, VisitCheckNotice.tsx, places/InfoRow.tsx, places/InfoSection.tsx, places/PlaceDetailStatus.tsx, places/PlaceDetailView.tsx, places/PlacesExplorer.tsx, places/PlacesStatus.tsx, course/CopyLinkButton.tsx, course/CourseError.tsx, course/CourseForm.tsx, course/CourseProgress.tsx, course/CourseResult.tsx, course/CourseStatus.tsx, course/useSigungu.ts)
 ├─ lib/
 │  ├─ ai/ (client.ts, parse.ts, picks.ts, constants.ts, types.ts, prompts/)
 │  ├─ tour/ (client.ts, normalize.ts, places.ts, placeDetail.ts, regions.ts, contentTypes.ts, candidates.ts)
-│  ├─ course/ (assemble.ts, constants.ts, distance.ts, generate.ts, input.ts, size.ts, types.ts)
+│  ├─ course/ (assemble.ts, constants.ts, courseLink.ts, distance.ts, errorScreen.ts, formErrors.ts, generate.ts, input.ts, places.ts, progress.ts, regionName.ts, sigungu.ts, size.ts, submit.ts, summary.ts, types.ts)
 │  ├─ db/ (client.ts, courses.ts, errors.ts, placeCache.ts, usage.ts)
 │  ├─ personas/ (index.ts, pet.ts)
 │  ├─ errors.ts, errorResponse.ts, clientIp.ts, deadline.ts, placeId.ts, placesQuery.ts, rateLimit.ts
@@ -63,14 +64,18 @@ src/
 db/migrations/
 ```
 - route.ts는 얇게 유지한다. 로직은 lib/에 둔다.
-- lib/tour/: client.ts는 외부 API 호출, normalize.ts는 응답 변환만 담당한다. 캐시 조회·저장은 lib/db/placeCache.ts가 담당하고, 서비스 함수(placeDetail.ts)가 그것을 호출한다.
+- lib/tour/: client.ts는 외부 API 호출, normalize.ts는 응답 변환만 담당한다. 캐시 조회·저장은 lib/db/placeCache.ts가 담당하고, 서비스 함수(placeDetail.ts)가 그것을 호출한다. 만료된 행도 읽어야 하는 코스 화면은 getCachedPlaceAnyAge(만료 여부를 expired로 돌려준다)를 쓴다. getCachedPlace는 만료와 행 없음을 모두 null로 돌려준다.
 - places.ts는 둘을 엮어 목록을 만드는 서비스 함수다. 항목별 normalize 실패는 건너뛰고 skipped를 센다. 외부 호출이나 변환 로직을 places.ts에 직접 쓰지 않는다.
 - placeDetail.ts(상세)는 client.ts, normalize.ts, lib/db/placeCache.ts를 엮는 서비스 함수다. 외부 호출, 변환, 쿼리 로직을 직접 쓰지 않는다. 흐름: 캐시 확인(placeCache) → detailCommon2 → detailPetTour2와 detailIntro2(동시) → 캐시 저장(placeCache).
 - regions.ts(지역)는 client.ts의 fetchLdongCodes(ldongCode2 호출)로 시도·시군구 목록을 만드는 서비스 함수다. getSidoList(), getSigunguList(sidoCode)를 제공하고, 항목은 types/index.ts의 Region({ code, name })으로 검증하며 실패한 항목은 건너뛰고 skipped를 센다. sido 검증 패턴은 1~5자리 숫자이고, 시군구 결과가 비면 INVALID_INPUT 404를 던진다.
 - app/api/regions/route.ts: GET /api/regions는 시도 목록, GET /api/regions?sido=11은 그 시도의 시군구 목록이다. sido가 패턴에 맞지 않으면 INVALID_INPUT 400이다.
 - 장소 탐색 화면(app/places/page.tsx)은 서버 컴포넌트에서 getSidoList()로 시도 목록을 가져와 클라이언트 컴포넌트(PlacesExplorer)에 내려 주고, 장소 목록은 선택 값이 바뀔 때 /api/places를 호출한다. 선택 값은 URL 쿼리(?sido=&type=&page=)에 둔다. 기본값(type=12, page=1)은 URL에서 생략하고, 한 페이지는 PAGE_SIZE=20(lib/placesQuery.ts)이다. 허용 타입과 이름은 lib/tour/contentTypes.ts 한 곳에서 정의한다.
-- 장소 카드(PlaceCard)에는 "방문 전 확인 필요"를 넣지 않는다. 카드는 동반 조건이나 영업시간을 보여 주지 않기 때문이다. 상세 화면에서 쓴다.
+- 장소 목록의 카드(PlaceCard)에는 "방문 전 확인 필요"를 넣지 않는다. 카드는 동반 조건이나 영업시간을 보여 주지 않기 때문이다. 상세 화면과, footer로 동반 구분과 운영시간을 보여 주는 코스 화면에서 쓴다.
 - 장소 상세(app/places/[id]/page.tsx)는 서버 컴포넌트에서 getPlaceDetail()을 직접 호출한다. 자기 API(/api/places/[id])를 다시 부르지 않는다. "목록으로" 링크는 sido/type/page 쿼리를 유지한다. 목록의 카드 링크가 같은 쿼리를 상세 주소에 실어 보낸다.
+- 홈(app/page.tsx)은 데이터를 불러오지 않는 정적 서버 컴포넌트다(빌드에서 ○). 소개 문구, 코스 만들기 주 버튼(/course/new), 장소 둘러보기 보조 버튼(/places), 한국관광공사 데이터 문구로 이루어진다.
+- 코스 만들기(app/course/new/page.tsx)는 서버 컴포넌트에서 getSidoList()로 시도 목록을 가져와 클라이언트 컴포넌트(CourseForm)에 내려 준다. 시군구는 시도를 고르면 useSigungu가 /api/regions?sido=를 불러 받고, 성공한 시도는 저장해 다시 부르지 않으며 실패는 저장하지 않고 자동 재시도하지 않는다. 제출은 lib/course/submit.ts의 postCourse가 /api/course를 호출하고(클라이언트 대기 COURSE_CLIENT_WAIT_MS), 성공하면 router.push로 /course/<id>(id만)로 이동한다. 오류 결과는 lib/course/errorScreen.ts가 화면 6종 또는 폼 상단 오류 박스(INVALID_INPUT 400)로 분류한다. 생성 중 화면은 경과 시간별 문구만 보여 주고 퍼센트는 없다(progress.ts).
+- 코스 결과(app/course/[id]/page.tsx)는 서버 컴포넌트에서 getCourse()를 직접 호출한다. null이면 notFound()로 course/[id]/not-found.tsx를, DB 오류이면 CourseStatus를 보여 준다. 장소는 lib/course/places.ts의 loadCoursePlaces가 모든 장소를 동시에 조회한다. 장소마다 getCachedPlaceAnyAge로 읽어 행이 있으면 만료됐어도 그대로 쓰고(만료면 "정보가 오래됐을 수 있어요." 표시, 관광공사 호출 없음), 행이 없을 때만 호출 한도를 코스당 한 번 확인한 뒤 getPlaceDetail로 채운다. 일부 장소만 실패하면 그 순서 칸만 대체 카드로 두고, 전부 실패하면 오류 화면이다.
+- PlaceCard는 선택 props badge(순서 번호)와 footer(아래 줄)를 받는다. 코스 화면이 footer에 동반 구분, 운영시간, "방문 전 확인 필요"를 넣는다. 링크 복사 주소는 buildCourseShareUrl(origin, id)로 만들며 id만 쓴다.
 - db/migrations/ 에는 번호를 붙인 SQL 파일만 둔다.
 - 한 파일에 로직을 몰아넣지 않는다.
 
@@ -87,6 +92,10 @@ db/migrations/
 - 모든 Supabase 테이블은 RLS를 켜둔 상태로 유지한다. secret 키는 RLS를 건너뛰지만 정책을 따로 만들지 않으므로, 접근은 서버(lib/db)에서만 된다.
 - IP는 원본이 아니라 해시해서 저장한다.
 - 키 값을 코드, 로그, 커밋 메시지에 직접 쓰지 않는다.
+- 사용자가 쓴 분위기(mood)는 폼 입력칸(CourseForm)의 state에만 둔다. URL, 쿼리스트링, 로그, 오류 문구, 화면에 넣지 않는다. 글자 수 숫자만 보여 줄 수 있다. 오류 뒤 폼 복원도 state로만 한다.
+- mood는 코스 생성 요청 본문(POST)으로만 서버에 보내진다. 서버는 AI 프롬프트에 전달하고 courses.input에 저장한다. 저장용 타입(CourseInputSnapshot)은 lib/db/courses.ts 안에서만 쓰고, 화면 코드는 import하지 않는다.
+- 읽기 함수 getCourse는 PublicCourse만 돌려주며 mood를 포함하지 않는다. 화면은 PublicCourse만 쓴다.
+- 현재 getCourse는 mood를 돌려주지 않아 다시 만들기 미리 채우기에서 mood는 채워지지 않는다. 채울지는 아직 정하지 않았다. TODO(확인 필요)
 
 ## DB 규칙
 - DB 접근은 lib/db 안의 함수로만 한다.
@@ -180,7 +189,7 @@ db/migrations/
   - petTourSyncList2를 쓰게 될 때만 showflag를 다룬다. (제안)
 - 원본 응답을 컴포넌트나 AI 프롬프트에 직접 넘기지 않는다.
 - 이미지의 cpyrhtDivCd가 Type3이면 변형(자르기, 필터 등)하지 않는다. 이미지에는 출처를 표시한다.
-- cpyrhtDivCd는 매뉴얼에서 Type1 "출처표시-권장", Type3 "제1유형 + 변경금지"만 확인했다. TODO(확인 필요): 출처 표시가 필수인지, 공공누리 이용 조건의 범위. 상세 화면에는 "사진 출처:" 문구를 쓰지 않는다.
+- cpyrhtDivCd는 매뉴얼에서 Type1 "출처표시-권장", Type3 "제1유형 + 변경금지"만 확인했다. TODO(확인 필요): 출처 표시가 필수인지, 공공누리 이용 조건의 범위. 상세 화면에는 "사진 출처:" 문구를 쓰지 않는다. 홈과 코스 화면에도 쓰지 않는다.
 - contentTypeId: 코드표는 12(관광지), 14(문화시설), 15(행사/공연/축제), 28(레포츠), 32(숙박), 38(쇼핑), 39(음식점)이다. 단, 목록·소개 조회의 파라미터 설명에는 75, 76 등 다른 값이 적혀 있어 문서가 서로 맞지 않는다.
   - 실제 호출 결과 12, 28, 32, 38, 39가 나왔고 75, 76은 나오지 않았다. 코드표(12 계열)를 따른다. 75, 76으로 직접 호출해 보지는 않았다.
   - TODO(확인 필요): 14(문화시설), 15(행사/공연/축제)는 아직 확인하지 못했다.
@@ -191,6 +200,15 @@ db/migrations/
 - detailCommon2로 상세 화면의 Place를 만든다. 선택 항목(주소, 이미지, 좌표 등)은 비어 있을 수 있어 optional로 처리한다. 표본이 4곳이라 항상 값이 있다고 단정하지 않는다.
 - 캐시 만료 기간 (제안값): 24시간. 매뉴얼의 데이터 갱신주기가 일 1회다. (공공데이터포털 페이지에는 "실시간"이라고 적혀 있어 두 자료가 다르다.)
 - 알려진 제약: 상세 조회에서 detailPetTour2나 detailIntro2가 빈 응답을 주면 모든 필드가 비어 있는 상세로 만들어 place_cache에 저장한다. 일시적인 빈 응답이어도 만료(24시간)까지 "정보 없음"으로 보일 수 있다.
+
+## 알려진 한계와 TODO (코스 화면)
+- 시간 초과(API_TIMEOUT) 화면에서 "다시 시도"를 누르면 코스가 중복 생성되고 호출 한도를 한 번 더 쓸 수 있다. 클라이언트가 기다리다 끊은 뒤 서버가 저장을 끝냈는지 확인하는 방법이 아직 없다. TODO(확인 필요)
+- /course/[id]에서 캐시 행이 없는 장소의 getPlaceDetail 폴백은 공개 링크를 여는 것만으로 관광공사를 부를 수 있다. 장소 한 곳이 3번이므로 최대 15번(COURSE_MAX_COUNT 5곳 x 3)이다. 장소를 동시에 조회해도 places 호출 한도는 코스 한 번당 한 번만 센다. 캐시 행을 지우는 코드는 찾지 못했지만 배포 DB에서는 확인하지 못했다. TODO(확인 필요)
+- /course/[id]를 캐시 적중만으로 열 때는 getCourse와 getCachedPlaceAnyAge의 DB 읽기만 하고 호출 한도 확인과 usage_log 기록이 없다. 반복 조회에 한도가 없다. 의도한 설계인지 정하지 않았다. TODO(확인 필요)
+- 코스 장소 중 한 곳이라도 DB 오류이면 코스 전체가 DB 오류 화면이 된다.
+- 코스 결과의 지역 이름 칩과 카카오 지도 영역은 만들지 않았다. 코스는 시도·시군구 코드만 갖고 있고 코드를 이름으로 바꾸려면 getSidoList() 등 추가 호출이 필요하다. 지도는 위 카카오 확인 전이라 만들지 않는다.
+- 코스 카드는 /places/<id>로만 연결한다. 장소 상세의 "코스로 돌아가기"(?course=)는 연결하지 않았다. buildCourseBackHref는 순수 함수만 있고 상세 화면은 ?course=를 읽지 않는다.
+- 브라우저에서 직접 확인하지 못한 항목: 홈, /course/new(시군구 선택, 유형 칩, mood 입력, 오류 6종), /course/[id](카드, 만료 표시, 대체 카드, 링크 복사 성공과 실패 폴백), 모든 화면의 360px 레이아웃. 컴포넌트와 useSigungu 훅은 단위 테스트가 없다. 실제 DB로 코스 생성부터 결과 화면까지의 흐름도 실행해 보지 못했다. TODO(확인 필요)
 
 ## 작업 방식
 - 한 번에 한 기능씩 구현한다.
