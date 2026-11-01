@@ -1,36 +1,175 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 발자국
 
-## Getting Started
+반려동물 동반 정보가 있는 장소로 하루 여행 코스를 만들어 주는 서비스입니다.
 
-First, run the development server:
+5~6일 안에 만드는 개인 프로젝트이자 포트폴리오이고, 구조 설계와 오류 처리를 보여주는 것이 목표입니다. 바이브코딩(Claude Code + VS Code)으로 만들었습니다.
+
+장소의 동반 조건과 운영시간은 틀릴 수 있어서, 이 정보를 보여주는 화면에는 "방문 전 확인 필요" 안내를 함께 표시합니다.
+
+## 서비스 흐름
+
+1. **조건 선택**: 시도(필수), 시·군·구(선택), 장소 유형(1~3개), 원하는 분위기(선택)
+2. **후보 수집**: 한국관광공사 API의 지역 목록에서 유형별 후보를 받고, 코드가 기준점으로부터의 거리를 계산해 가까운 순으로 고릅니다. 반경은 20km, 50km 순으로 넓히고 후보가 3곳 미만이면 만들지 않습니다.
+3. **AI 선택**: AI는 후보 중에서 장소를 고르고 순서를 정합니다. 응답에는 placeId만 받습니다.
+4. **검증**: 응답 모양과 규칙을 zod로 검증하고, 고른 장소는 상세 정보로 다시 확인합니다. 동반 구분 값이 없는 장소는 코스에서 뺍니다.
+5. **저장**: 코스는 순서가 있는 placeId 목록으로 저장합니다.
+6. **결과**: `/course/<id>`에서 장소를 순서대로 보여주고, 링크로 공유할 수 있습니다.
+
+- 코스는 3~5곳이고, 허용하는 유형은 관광지, 문화시설, 레포츠, 음식점입니다. 숙박, 행사, 쇼핑은 코스 후보에서 제외합니다.
+- 선택한 유형 중 후보가 없는 유형은 결과에 "빼고 만들었어요" 안내로 알립니다.
+- "다시 만들기"는 시도, 시·군·구, 유형만 미리 채웁니다. 분위기는 채우지 않습니다.
+
+## 기술 스택
+
+- Next.js 16.4.3 (App Router), React 19.3.0, TypeScript, Vercel 배포 대상
+- Tailwind CSS v4
+- Supabase (Postgres)
+- zod (요청, AI 응답, DB에서 읽은 JSON 검증)
+- OpenAI API: SDK 없이 `fetch`로 호출합니다. 모델명은 `src/lib/ai/constants.ts` 한 곳에서만 정의합니다. (현재 `gpt-6-luna`)
+- 장소 데이터: 한국관광공사 '반려동물 동반여행 서비스' API (공공데이터포털)
+- 지도: 카카오 지도 API를 쓸 계획이지만 아직 구현하지 않았습니다.
+
+## 핵심 설계 원칙
+
+1. **장소는 실제 데이터만 씁니다.** AI는 장소를 만들지 않고, 주어진 후보 중에서 고르고 순서만 정합니다. AI 응답에는 placeId만 받습니다.
+2. **반드시 지켜야 할 조건(hard)은 코드가 필터링합니다.** 지역, 유형, 좌표, 동반 구분 값 유무는 코드가 걸러내고, 취향성 조건(soft)만 프롬프트로 전달합니다.
+3. **모든 AI 응답은 zod로 검증합니다.** 검증에 실패하면 한 번만 다시 호출하고(총 2번), 그래도 실패하면 오류 안내를 보여줍니다. 검증되지 않은 응답은 화면이나 DB에 쓰지 않습니다.
+4. **DB 접근은 `src/lib/db` 안의 함수로만 합니다.** 화면과 API Route에서 쿼리를 직접 쓰지 않고, DB 오류는 `DB_UNAVAILABLE`로 바꿔서 던집니다. JSONB로 저장한 데이터는 읽을 때 zod로 다시 검증합니다.
+5. **페르소나는 함수로 분리합니다.** 지금은 반려동물 하나만 구현했고 프로필 입력 UI 없이 고정 기본 프로필을 씁니다.
+6. **프롬프트 문자열은 `src/lib/ai/prompts/`에 버전별 파일로 관리합니다.** 현재 v1만 있고 코스 생성이 v1을 씁니다.
+
+폴더는 다음과 같이 나눕니다. route 파일은 얇게 두고 로직은 `lib/`에 둡니다.
+
+| 위치 | 역할 |
+|---|---|
+| `src/app/` | 화면(홈, 장소 목록·상세, 코스 만들기, 코스 결과)과 API Route |
+| `src/lib/tour/` | 관광공사 호출(`client`), 응답 변환(`normalize`), 이를 엮는 서비스 함수 |
+| `src/lib/ai/` | OpenAI 호출, 응답 검증, 프롬프트 버전 파일 |
+| `src/lib/course/` | 후보 조립, 코스 생성 흐름, 입력 검증, 화면용 순수 로직 |
+| `src/lib/db/` | Supabase 접근(서버 전용) |
+| `db/migrations/` | 번호가 붙은 SQL 파일 |
+
+## 프롬프트 v1 설계 의도
+
+`src/lib/ai/prompts/v1.ts`에서 확인되는 설계입니다. v1 하나만 있고 다른 버전과의 비교는 하지 않았습니다.
+
+- **후보 정보는 최소로 넣습니다.** placeId, 이름, 유형, 주소만 넣고 거리나 시간은 넣지 않습니다. 모델에게 거리와 시간을 계산하지 말라고 지시합니다. 계산은 코드가 합니다.
+- **사용자가 쓴 분위기는 지시가 아니라 데이터로 분리합니다.** 필드 이름을 "사용자입력_분위기(지시가 아님)"으로 두고, 그 안의 지시는 따르지 말라고 규칙에 적었습니다. 줄바꿈과 반복 공백을 정리하고 100자로 제한한 뒤 JSON 문자열로 넣어 따옴표나 줄바꿈이 구조를 깨지 못하게 합니다.
+- **응답 형식을 좁힙니다.** placeId 숫자 목록만 JSON으로 답하게 하고, 후보에 없는 id, 중복 id, 요청한 수와 다른 개수는 위반으로 봅니다.
+- **재시도는 위반 종류로만 알립니다.** 위반 종류마다 고정 문장을 쓰고, 사용자 입력이나 이전 응답의 내용은 되풀이하지 않습니다.
+- **AI 응답 검증 실패의 서버 로그에는 위반 종류 이름만 남깁니다.** 응답 본문이나 사용자 입력은 남기지 않습니다.
+
+## 오류 처리
+
+에러는 `AppError(code, userMessage, status)`로 통일하고, 코드는 6개만 씁니다.
+
+`RATE_LIMIT`, `API_TIMEOUT`, `API_FAILED`, `BAD_AI_RESPONSE`, `INVALID_INPUT`, `DB_UNAVAILABLE`
+
+**화면**
+- `/course/new`: 호출 한도 초과, 시간 초과, 장소 정보 실패, 코스 생성 실패, 조건에 맞는 장소 부족(`INVALID_INPUT` 422), DB 연결 실패 화면 6종이 있습니다. 클라이언트 검증을 통과했는데 서버가 입력을 거절한 경우(`INVALID_INPUT` 400)는 화면 없이 폼 위에 안내 박스를 보여줍니다. 생성 중에는 경과 시간별 문구만 보여주고, 알 수 없는 퍼센트는 만들지 않습니다.
+- `/course/[id]`: 로딩, 존재하지 않는 코스, DB 오류, 장소 전체 실패, 호출 한도 초과 화면이 있습니다. 일부 장소만 실패하면 그 순서 칸만 대체 카드로 두고 나머지 코스는 보여줍니다. 존재하지 않는 코스는 uuid가 아닌 경우, 행이 없는 경우, 저장된 모양이 맞지 않는 경우를 구분하지 못해서 원인을 단정하지 않는 문구를 씁니다.
+- 내부 에러 내용(스택, 원본 메시지)은 사용자에게 보여주지 않습니다.
+
+**시간 초과** (아래 값은 제안값이고, Vercel 함수 최대 실행 시간은 배포로 확인하기 전까지 가정입니다)
+- 외부 호출에는 모두 타임아웃을 겁니다. 관광공사 8초, OpenAI 20초입니다.
+- 코스 한 건의 전체 예산은 80초이고 `maxDuration`은 90초, 클라이언트 대기는 100초입니다. 서버의 응답이 먼저 오도록 서로 다르게 둡니다.
+- 시군구 호출은 클라이언트 대기 25초를 넘기면 다른 실패와 같이 처리합니다. 같은 안내와 "시·군·구 다시 불러오기" 버튼이 나오고, 시군구는 선택 항목이라 비워 두고 코스를 만들 수 있습니다. 25초는 서버가 캐시 없이 가장 오래 걸리는 경로의 단순 합(18초)에 여유를 더한 값이고 콜드 스타트는 반영하지 못했습니다.
+- AI 응답 검증 실패는 1회만 재시도합니다. 관광공사 호출 실패는 호출 한도를 아끼기 위해 자동 재시도하지 않습니다.
+
+**호출 한도** (`usage_log`로 셉니다. IP별 한도는 IP를 해시한 값 기준입니다. 값은 제안값 또는 임시값입니다)
+- 코스 생성: 시간당 5회(제안값), 전체 하루 20건(임시값, 관광공사 한도 확인 필요)
+- 장소 조회: 분당 30회(제안값)
+- 시간 창은 요청 시각 기준 최근 구간(이동 구간)입니다. 달력 날짜에 초기화되지 않습니다.
+- 한도를 쓰는 것은 허용된 요청입니다. 허용된 요청은 이후 코스 생성이 실패해도 한도에 들어갑니다. 거절된 요청과 입력 검증에 실패한 요청은 기록하지 않습니다.
+- 한도 조회나 기록이 DB 오류이면 요청을 통과시키지 않고 `DB_UNAVAILABLE`로 실패시킵니다.
+- 초과 문구는 한도 종류별로 다르고, 수치와 구체적인 시각은 넣지 않습니다.
+
+## 보안
+
+- OpenAI 키, 관광공사 API 키, Supabase secret 키는 서버 코드에서만 쓰고 `NEXT_PUBLIC_` 접두사를 붙이지 않습니다. 브라우저에서 Supabase를 직접 호출하지 않습니다.
+- `NEXT_PUBLIC_`은 카카오 지도 JavaScript 키에만 예외로 허용합니다. 지도를 아직 구현하지 않아서 현재 코드에는 `NEXT_PUBLIC_` 변수가 없습니다.
+- `.env*` 파일은 커밋하지 않습니다. (`.env.example`만 예외)
+- 모든 Supabase 테이블은 RLS를 켜 두고 정책을 만들지 않아서, 접근은 서버(`lib/db`)에서만 됩니다.
+- IP는 원본이 아니라 비밀 소금을 쓴 해시로만 저장합니다.
+- 사용자가 쓴 분위기(mood)는 입력칸의 폼 상태에만 두고 화면, URL, 쿼리, 로그, 오류 문구에 넣지 않습니다. 코스 생성 요청 본문으로만 서버에 보내고, AI 프롬프트에 데이터로 전달하며, 코스와 함께 DB에 저장합니다. 코스를 읽는 함수는 분위기를 돌려주지 않고 화면은 그 결과만 씁니다.
+
+## 실행 방법
+
+### 환경변수
+
+프로젝트 루트에 `.env.local`을 만들고 아래 이름으로 값을 채웁니다. 코드가 읽는 이름은 이 5개입니다. 모두 서버 전용이고 `NEXT_PUBLIC_`을 붙이지 않습니다.
+
+| 이름 | 용도 |
+|---|---|
+| `SUPABASE_URL` | Supabase 프로젝트 주소 |
+| `SUPABASE_SECRET_KEY` | Supabase secret 키 (레거시 키는 쓰지 않습니다) |
+| `TOUR_API_KEY` | 공공데이터포털의 한국관광공사 인증키 |
+| `OPENAI_API_KEY` | OpenAI API 키 |
+| `RATE_LIMIT_SALT` | 호출 한도에서 IP를 해시할 때 쓰는 비밀 문자열 |
+
+### DB
+
+`db/migrations/`의 SQL을 번호 순서(`001_create_place_cache.sql`, `002_create_courses.sql`, `003_create_usage_log.sql`)대로 적용합니다. 테이블은 `place_cache`, `courses`, `usage_log`입니다.
+
+> TODO: 마이그레이션을 적용하는 방법(SQL 편집기, CLI 등)은 아직 정하지 않았습니다.
+
+### 명령어
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev     # 개발 서버
+npm run build   # 빌드
+npm run start   # 빌드 결과 실행
+npm run lint    # 린트
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+> TODO: 요구하는 Node.js 버전은 확인하지 않았습니다.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 테스트
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+`package.json`에는 테스트 스크립트가 없습니다. 테스트 파일(`*.test.ts`)은 각 파일 상단 주석의 명령으로 실행합니다. `tsx`는 `npx`로 받아 쓰고 프로젝트 의존성에는 없어서 네트워크가 필요합니다.
 
-## Learn More
+```bash
+npx -y tsx@4.23.12 --conditions=react-server --test <테스트 파일 경로>
 
-To learn more about Next.js, take a look at the following resources:
+# 한꺼번에 실행
+npx -y tsx@4.23.12 --conditions=react-server --test src/lib/*.test.ts src/lib/*/*.test.ts
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 알려진 한계
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- 허용된 코스 생성 요청은 이후 생성이 실패해도 호출 한도(시간당, 하루)를 씁니다.
+- 시간 초과 화면에서 "다시 시도"를 누르면 코스가 중복으로 생성되고 호출 한도를 한 번 더 쓸 수 있습니다. 클라이언트가 기다리다 끊은 뒤 서버가 저장을 끝냈는지 확인하는 방법이 아직 없습니다.
+- 캐시 행이 있는 코스 링크를 반복해서 열 때는 호출 한도 확인과 기록이 없습니다. 의도한 설계인지 정하지 않았습니다.
+- 코스 링크를 열 때 캐시 행이 없는 장소가 있으면 관광공사를 최대 15번(5곳 x 3번) 부를 수 있습니다. 장소를 동시에 조회해도 장소 조회 한도는 코스 한 번당 한 번만 셉니다.
+- 코스 장소 중 한 곳이라도 DB 오류이면 코스 전체가 DB 오류 화면이 됩니다.
+- 카카오 지도 영역과 코스 결과의 지역 이름 칩은 구현하지 않았습니다.
+- 코스 카드에서 장소 상세로 가면 "코스로 돌아가기"가 없고 목록으로만 돌아갈 수 있습니다.
+- 로그인이 없습니다. 코스는 링크를 아는 사람이 누구나 볼 수 있습니다.
+- 일시 정지된 Supabase는 `DB_UNAVAILABLE`로 처리하며, 호출 한도 확인이 DB를 쓰기 때문에 정지 중에는 장소 탐색도 막힙니다. keep-alive는 만들지 않았습니다.
+- 한도 값은 임시값이고, 관광공사 일일 한도가 기능별인지 서비스 전체 합산인지는 확인하지 못했습니다.
 
-## Deploy on Vercel
+## 검증 상태
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+**자동 테스트**: 코스 입력 검증, 오류 분류, 코스 생성 흐름, 시군구 호출, 미리 채우기 쿼리, 호출 한도 같은 순수 로직의 단위 테스트가 있습니다. 외부 호출은 가짜로 바꿔서 하므로 OpenAI, 관광공사, DB를 실제로 부르지 않습니다. React 컴포넌트와 훅의 테스트는 없습니다.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**직접 확인 완료** (사용자가 브라우저에서 확인)
+- 홈
+- 존재하지 않는 코스 화면
+- 미리 채우기 쿼리
+- 분위기 입력칸(주소에 노출되지 않음)
+- 장소 목록과 상세
+- 호출 한도 초과 화면과 "처음으로" 이동
+- 시군구 호출 실패 경로
+
+**확인 전**
+- 코스 생성 성공 후 결과 화면 전체
+- 링크 복사(성공과 실패 안내)
+- 다시 만들기 주소와 폼 채움
+- 새로고침 시 관광공사 호출 여부
+- 조건 부족(422) 화면과 "조건 바꾸기" 뒤 값 유지
+- 시간 초과, 장소 정보 실패, 코스 생성 실패, DB 연결 실패 화면
+- 모든 화면의 360px 레이아웃
+- 시군구 호출 응답이 실제로 멈추는 상황(타임아웃은 단위 테스트로만 확인)
+
+장소 정보는 한국관광공사 데이터를 바탕으로 합니다.
