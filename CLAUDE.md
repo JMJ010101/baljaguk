@@ -95,7 +95,7 @@ db/migrations/
 - 사용자가 쓴 분위기(mood)는 폼 입력칸(CourseForm)의 state에만 둔다. URL, 쿼리스트링, 로그, 오류 문구, 화면에 넣지 않는다. 글자 수 숫자만 보여 줄 수 있다. 오류 뒤 폼 복원도 state로만 한다.
 - mood는 코스 생성 요청 본문(POST)으로만 서버에 보내진다. 서버는 AI 프롬프트에 전달하고 courses.input에 저장한다. 저장용 타입(CourseInputSnapshot)은 lib/db/courses.ts 안에서만 쓰고, 화면 코드는 import하지 않는다.
 - 읽기 함수 getCourse는 PublicCourse만 돌려주며 mood를 포함하지 않는다. 화면은 PublicCourse만 쓴다.
-- 현재 getCourse는 mood를 돌려주지 않아 다시 만들기 미리 채우기에서 mood는 채워지지 않는다. 채울지는 아직 정하지 않았다. TODO(확인 필요)
+- 다시 만들기 미리 채우기는 시도, 시군구, 유형만 채운다. mood는 채우지 않는다. (사용자 결정) 값은 /course/new?sido=&sigungu=&types=12,39 쿼리로 전달하고(types는 쉼표로 구분), 코스 id와 mood는 쿼리에 넣지 않는다. 링크 생성과 쿼리 검증은 lib/course/prefill.ts에 있고, 잘못된 값은 오류 없이 버린다. getCourse와 PublicCourse는 mood를 돌려주지 않으며 바꾸지 않는다.
 
 ## DB 규칙
 - DB 접근은 lib/db 안의 함수로만 한다.
