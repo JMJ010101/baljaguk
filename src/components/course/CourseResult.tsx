@@ -5,6 +5,7 @@ import PlaceCard from "@/components/PlaceCard";
 import Tag from "@/components/Tag";
 import VisitCheckNotice from "@/components/VisitCheckNotice";
 import type { CoursePlace } from "@/lib/course/places";
+import { buildRecreateHref } from "@/lib/course/prefill";
 import { missingTypeNotices, placeCountLabel } from "@/lib/course/summary";
 import type { PublicCourse } from "@/lib/course/types";
 import { supportsOperatingInfo } from "@/lib/tour/normalize";
@@ -132,7 +133,10 @@ export default function CourseResult({ course, places }: { course: PublicCourse;
 
       <div className="mt-8 flex flex-col gap-3">
         <CopyLinkButton courseId={course.id} />
-        <Button href="/course/new" variant="secondary">
+        <Button
+          href={buildRecreateHref({ sido: course.sido, sigungu: course.sigungu, types: course.types })}
+          variant="secondary"
+        >
           다시 만들기
         </Button>
       </div>

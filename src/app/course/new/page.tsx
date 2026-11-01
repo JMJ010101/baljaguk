@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import CourseForm from "@/components/course/CourseForm";
+import { parseRecreatePrefill, resolveFormPrefill } from "@/lib/course/prefill";
 import { AppError } from "@/lib/errors";
 import { getSidoList } from "@/lib/tour/regions";
 import type { SidoListState } from "@/types";
@@ -21,9 +22,19 @@ async function loadSidoState(): Promise<SidoListState> {
   }
 }
 
-export default async function NewCoursePage() {
+// ?sido=&sigungu=&types= 는 "다시 만들기"가 싣는 미리 채우기 값이다. 잘못된 값은 조용히 버리고 mood는 읽지 않는다.
+export default async function NewCoursePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   // 빌드 때 한 번 실행되어 굳지 않도록 요청이 올 때까지 렌더링을 미룬다.
   await connection();
-  const sidoState = await loadSidoState();
-  return <CourseForm sidoState={sidoState} />;
+  const [sidoState, query] = await Promise.all([loadSidoState(), searchParams]);
+  // 시도 목록을 쓸 수 없으면 미리 채운 시도와 시군구는 버린다. (대조할 수 없다)
+  const sidoCodes = sidoState.status === "ok" ? sidoState.regions.map((region) => region.code) : undefined;
+  const prefill = resolveFormPrefill(parseRecreatePrefill(query), sidoCodes);
+  // 쿼리가 바뀌면 폼을 새로 만든다. (입력 중이던 값은 사라진다)
+  const formKey = `${prefill.sido}|${prefill.sigungu}|${prefill.types.join(",")}`;
+  return <CourseForm key={formKey} sidoState={sidoState} prefill={prefill} />;
 }

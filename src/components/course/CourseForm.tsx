@@ -9,6 +9,7 @@ import { useSigungu } from "@/components/course/useSigungu";
 import { MOOD_MAX_LENGTH } from "@/lib/ai/constants";
 import { classifySubmitError, type ErrorScreenKind } from "@/lib/course/errorScreen";
 import { moodLength, validateCourseForm, type CourseFormErrors, type CourseFormValues } from "@/lib/course/formErrors";
+import type { FormPrefill } from "@/lib/course/prefill";
 import { sigunguNotice } from "@/lib/course/sigungu";
 import { postCourse } from "@/lib/course/submit";
 import { COURSE_CONTENT_TYPE_IDS, CONTENT_TYPES } from "@/lib/tour/contentTypes";
@@ -24,12 +25,17 @@ type Phase =
   | { kind: "submitting" }
   | { kind: "error"; screen: ErrorScreenKind; message?: string };
 
-const INITIAL_VALUES: CourseFormValues = { sido: "", sigungu: "", types: [], mood: "" };
-
 // 폼 값(mood 포함)은 이 컴포넌트의 state에만 둔다. URL, 쿼리, 로그, 오류 문구에는 넣지 않고, 오류 뒤 폼 복원도 state로만 한다.
-export default function CourseForm({ sidoState }: { sidoState: SidoListState }) {
+// prefill은 "다시 만들기"로 넘어온 시도, 시군구, 유형이다. 처음 한 번만 초기값으로 쓰고, 그 뒤에는 사용자가 그대로 고칠 수 있다.
+// mood는 미리 채우지 않는다. (prefill에 mood가 없다)
+export default function CourseForm({ sidoState, prefill }: { sidoState: SidoListState; prefill?: FormPrefill }) {
   const router = useRouter();
-  const [values, setValues] = useState<CourseFormValues>(INITIAL_VALUES);
+  const [values, setValues] = useState<CourseFormValues>(() => ({
+    sido: prefill?.sido ?? "",
+    sigungu: prefill?.sigungu ?? "",
+    types: prefill?.types ?? [],
+    mood: "",
+  }));
   const [errors, setErrors] = useState<CourseFormErrors>({});
   const [phase, setPhase] = useState<Phase>({ kind: "form", notice: false });
   const abortRef = useRef<AbortController | null>(null);
@@ -39,8 +45,16 @@ export default function CourseForm({ sidoState }: { sidoState: SidoListState }) 
 
   const sidoRegions = sidoState.status === "ok" ? sidoState.regions : [];
 
+  // 화면에 보이는 시군구와 제출하는 시군구를 같은 값으로 맞춘다. 시군구 목록을 받았고 그 안에 있을 때만 쓰고,
+  // 그 밖(로딩 중, 실패, 429, 시군구 없음, 목록에 없는 값)에는 빈 값이다. 목록에 없는 값이 화면에는 "전체"로 보이면서 제출되지 않게 한다.
+  const sigunguValue =
+    sigungu.status === "ok" && sigungu.regions.some((region) => region.code === values.sigungu) ? values.sigungu : "";
+  // 미리 채운 시군구가 있고 목록을 아직 받는 중일 때만 제출을 잠시 막는다. 실패나 429이면 풀리고 시군구 없이 제출할 수 있다.
+  const sigunguPending = values.sigungu !== "" && sigungu.status === "loading";
+
   async function submit() {
-    const validation = validateCourseForm(values);
+    if (sigunguPending) return;
+    const validation = validateCourseForm({ ...values, sigungu: sigunguValue });
     if (!validation.ok) {
       setErrors(validation.errors);
       setPhase({ kind: "form", notice: false });
@@ -145,7 +159,7 @@ export default function CourseForm({ sidoState }: { sidoState: SidoListState }) 
               id="sigungu"
               className={fieldClass}
               disabled={sigungu.status !== "ok"}
-              value={values.sigungu}
+              value={sigunguValue}
               onChange={(e) => setValues((prev) => ({ ...prev, sigungu: e.target.value }))}
             >
               <option value="">{sigungu.status === "loading" ? "불러오는 중이에요" : "전체"}</option>
@@ -214,7 +228,8 @@ export default function CourseForm({ sidoState }: { sidoState: SidoListState }) 
         <div className="flex flex-col gap-3">
           <button
             type="submit"
-            className="inline-flex min-h-12 w-full items-center justify-center rounded-button bg-primary px-5 py-2 text-base font-bold text-on-primary"
+            disabled={sigunguPending}
+            className="inline-flex min-h-12 w-full items-center justify-center rounded-button bg-primary px-5 py-2 text-base font-bold text-on-primary disabled:opacity-60"
           >
             코스 만들기
           </button>
