@@ -48,3 +48,7 @@ export const KAKAO_MAP_LOAD_WAIT_MS = 10_000;
 export const KAKAO_MAP_SINGLE_STOP_LEVEL = 4;
 // 여러 곳을 한 화면에 맞출 때 가장자리에 남기는 여백(px)이다.
 export const KAKAO_MAP_BOUNDS_PADDING_PX = 32;
+// 순서 연결선(직선 점선)의 모양이다. 굵기와 투명도는 임시값이다. 점선 값은 브라우저로 그려 보고 정했다. (확인 필요)
+export const KAKAO_MAP_ROUTE_STROKE_WEIGHT_PX = 3;
+export const KAKAO_MAP_ROUTE_STROKE_OPACITY = 0.8;
+export const KAKAO_MAP_ROUTE_STROKE_STYLE = "shortdash";

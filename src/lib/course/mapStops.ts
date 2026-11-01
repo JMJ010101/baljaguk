@@ -20,6 +20,15 @@ export function isValidCoordinate(latitude: number | undefined, longitude: numbe
   return Math.abs(latitude) <= LATITUDE_LIMIT && Math.abs(longitude) <= LONGITUDE_LIMIT;
 }
 
+export type RoutePoint = { latitude: number; longitude: number };
+
+// 지도에 보이는 장소끼리 번호 순서대로 잇는 직선(점선)의 좌표다. 실제 이동 경로가 아니다.
+// 좌표가 없어 지도에서 빠진 장소는 건너뛰고 남은 장소끼리 잇는다. 2곳 미만이면 선이 없어 null이다.
+export function buildRoutePath(stops: readonly MapStop[]): RoutePoint[] | null {
+  if (stops.length < 2) return null;
+  return stops.map(({ latitude, longitude }) => ({ latitude, longitude }));
+}
+
 export function buildMapStops(places: readonly CoursePlace[]): MapStops {
   const stops: MapStop[] = [];
   places.forEach((stop, index) => {

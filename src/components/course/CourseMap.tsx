@@ -6,9 +6,12 @@ import { KakaoMapLoadError, loadKakaoMaps, type MapLoadFailure } from "@/compone
 import {
   KAKAO_MAP_BOUNDS_PADDING_PX,
   KAKAO_MAP_LOAD_WAIT_MS,
+  KAKAO_MAP_ROUTE_STROKE_OPACITY,
+  KAKAO_MAP_ROUTE_STROKE_STYLE,
+  KAKAO_MAP_ROUTE_STROKE_WEIGHT_PX,
   KAKAO_MAP_SINGLE_STOP_LEVEL,
 } from "@/lib/course/constants";
-import type { MapStop } from "@/lib/course/mapStops";
+import { buildRoutePath, type MapStop } from "@/lib/course/mapStops";
 
 // 코스 결과의 지도다. 번호 마커는 카드의 순서 번호와 같다. 마커는 누르는 요소가 아니라 표시일 뿐이다. (DESIGN.md: 누르는 요소는 44px 이상)
 // 지도가 실패해도 코스 카드 목록은 그대로 보인다. 문구는 DESIGN.md의 "세부 문구 확정"이 정해지기 전의 초안이다.
@@ -20,8 +23,9 @@ const FAILED_TITLE = "지도를 불러오지 못했어요";
 const FAILED_DESCRIPTION = "코스 목록은 아래에서 그대로 볼 수 있어요.";
 const RETRY_LABEL = "지도 다시 불러오기";
 const MAP_LABEL = "코스 장소 위치 지도";
+const ROUTE_NOTICE = "점선은 방문 순서를 보여 주는 직선이에요. 실제 이동 경로가 아니에요.";
 
-type Status = { kind: "loading" } | { kind: "ready" } | { kind: "failed"; reason: MapLoadFailure };
+type Status = { kind: "loading" } | { kind: "ready"; routeDrawn: boolean } | { kind: "failed"; reason: MapLoadFailure };
 
 export default function CourseMap({ stops, hiddenCount }: { stops: MapStop[]; hiddenCount: number }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -47,6 +51,22 @@ export default function CourseMap({ stops, hiddenCount }: { stops: MapStop[]; hi
             const pad = KAKAO_MAP_BOUNDS_PADDING_PX;
             map.setBounds(bounds, pad, pad, pad, pad);
           }
+          // 순서 연결선: 선 색은 CSS 변수 --color-primary를 읽어 쓴다. 값이 비면 선만 생략하고 마커는 그대로 둔다.
+          let routeDrawn = false;
+          const route = buildRoutePath(stops);
+          const strokeColor = getComputedStyle(document.documentElement).getPropertyValue("--color-primary").trim();
+          if (route !== null && strokeColor !== "") {
+            const line = new maps.Polyline({
+              path: route.map((point) => new maps.LatLng(point.latitude, point.longitude)),
+              strokeWeight: KAKAO_MAP_ROUTE_STROKE_WEIGHT_PX,
+              strokeColor,
+              strokeOpacity: KAKAO_MAP_ROUTE_STROKE_OPACITY,
+              strokeStyle: KAKAO_MAP_ROUTE_STROKE_STYLE,
+            });
+            line.setMap(map);
+            overlays.push(line);
+            routeDrawn = true;
+          }
           stops.forEach((stop, index) => {
             const marker = document.createElement("div");
             marker.className =
@@ -56,7 +76,7 @@ export default function CourseMap({ stops, hiddenCount }: { stops: MapStop[]; hi
             overlay.setMap(map);
             overlays.push(overlay);
           });
-          setStatus({ kind: "ready" });
+          setStatus({ kind: "ready", routeDrawn });
         } catch {
           console.error("카카오 지도 그리기 실패");
           setStatus({ kind: "failed", reason: "script-error" });
@@ -108,6 +128,7 @@ export default function CourseMap({ stops, hiddenCount }: { stops: MapStop[]; hi
           </div>
         )}
       </div>
+      {status.kind === "ready" && status.routeDrawn && <p className="mt-2 text-base text-muted">{ROUTE_NOTICE}</p>}
       {hiddenCount > 0 && (
         <p className="mt-2 text-base text-muted">위치 정보가 없는 장소 {hiddenCount}곳은 지도에 표시하지 않았어요.</p>
       )}

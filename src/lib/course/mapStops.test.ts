@@ -2,7 +2,7 @@
 // 실행: npx -y tsx@4.23.12 --conditions=react-server --test src/lib/course/mapStops.test.ts
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { buildMapStops, isValidCoordinate } from "@/lib/course/mapStops";
+import { buildMapStops, buildRoutePath, isValidCoordinate } from "@/lib/course/mapStops";
 import type { CoursePlace } from "@/lib/course/places";
 
 const ok = (id: number, latitude?: number, longitude?: number, stale = false): CoursePlace =>
@@ -79,4 +79,31 @@ test("좌표 있는 장소가 0곳이면 stops는 비고 hiddenCount는 전체 �
 
 test("만료된 캐시(stale)의 장소도 좌표가 있으면 표시한다", () => {
   assert.equal(buildMapStops([ok(1, 37.5, 127.0, true)]).stops.length, 1);
+});
+
+test("연결선: 장소가 0곳이나 1곳이면 선이 없다", () => {
+  assert.equal(buildRoutePath([]), null);
+  assert.equal(buildRoutePath(buildMapStops([ok(1, 37.5, 127)]).stops), null);
+});
+
+test("연결선: 2곳 이상이면 번호 순서대로 좌표를 돌려준다", () => {
+  const { stops } = buildMapStops([ok(1, 37.5, 127), ok(2, 37.6, 127.1), ok(3, 37.7, 127.2)]);
+  assert.deepEqual(buildRoutePath(stops), [
+    { latitude: 37.5, longitude: 127 },
+    { latitude: 37.6, longitude: 127.1 },
+    { latitude: 37.7, longitude: 127.2 },
+  ]);
+});
+
+test("연결선: 좌표가 없거나 가져오지 못한 중간 장소는 건너뛰고 보이는 장소끼리 잇는다", () => {
+  const { stops } = buildMapStops([ok(1, 37.5, 127), ok(2), failed(3), ok(4, 37.7, 127.2)]);
+  assert.deepEqual(buildRoutePath(stops), [
+    { latitude: 37.5, longitude: 127 },
+    { latitude: 37.7, longitude: 127.2 },
+  ]);
+});
+
+test("연결선: 같은 좌표가 이어져도 그대로 돌려준다", () => {
+  const { stops } = buildMapStops([ok(1, 37.5, 127), ok(2, 37.5, 127)]);
+  assert.equal(buildRoutePath(stops)?.length, 2);
 });

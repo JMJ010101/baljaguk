@@ -15,6 +15,15 @@ export type KakaoMaps = {
   LatLng: new (latitude: number, longitude: number) => KakaoLatLng;
   LatLngBounds: new () => { extend(latLng: KakaoLatLng): void };
   Map: new (container: HTMLElement, options: { center: KakaoLatLng; level: number }) => KakaoMapHandle;
+  // 옵션 이름은 공식 문서 본문을 읽지 못해 브라우저에서 그려 보고 확인한다.
+  Polyline: new (options: {
+    path: KakaoLatLng[];
+    strokeWeight: number;
+    strokeColor: string;
+    strokeOpacity: number;
+    strokeStyle: string;
+    zIndex?: number;
+  }) => KakaoOverlayHandle;
   CustomOverlay: new (options: {
     position: KakaoLatLng;
     content: HTMLElement;
