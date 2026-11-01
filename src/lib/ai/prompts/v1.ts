@@ -2,7 +2,7 @@ import { MOOD_MAX_LENGTH } from "@/lib/ai/constants";
 import type { AiViolationKind, CoursePromptInput, PromptVersion } from "@/lib/ai/types";
 import { getContentTypeLabel } from "@/lib/tour/contentTypes";
 
-// v1: 후보 정보는 이름, 유형, 주소만 넣는다. (거리는 v2에서 비교한다)
+// v1: 후보 정보는 이름, 유형, 주소만 넣는다. (거리는 넣지 않는다)
 const INSTRUCTIONS = [
   "당신은 반려동물과 함께 가는 하루 여행 코스를 짜는 도우미입니다.",
   "규칙:",
