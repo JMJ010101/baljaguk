@@ -87,3 +87,34 @@ export async function setCachedPlace(place: Place, detail: PlaceDetail, options?
     .abortSignal(AbortSignal.timeout(options?.timeoutMs ?? DB_TIMEOUT_MS));
   if (error) throw dbUnavailableError(error, TABLE_NAME);
 }
+
+export type CachedPlaceAnyAge = { cached: CachedPlace; expired: boolean };
+
+// 만료된 행도 돌려준다. 코스 화면이 만료 캐시를 그대로 보여 주려고 쓴다. (만료 여부는 expired로 알린다)
+// 행이 없거나 검증에 실패하면 null이다. getCachedPlace와 같은 검증을 하며, 그쪽은 바꾸지 않아서 이 함수에 따로 둔다.
+export async function getCachedPlaceAnyAge(placeId: number, options?: DbCallOptions): Promise<CachedPlaceAnyAge | null> {
+  const rowId = String(placeId);
+  const { data: row, error } = await createDbClient()
+    .from(TABLE_NAME)
+    .select("place_id, data, expires_at")
+    .eq("place_id", rowId)
+    .abortSignal(AbortSignal.timeout(options?.timeoutMs ?? DB_TIMEOUT_MS))
+    .maybeSingle();
+  if (error) throw dbUnavailableError(error, TABLE_NAME);
+  if (!row) return null;
+
+  const expiresAt = new Date(row.expires_at).getTime();
+  // 만료 시각을 읽을 수 없으면 신선하다고 볼 수 없으므로 만료로 본다.
+  const expired = Number.isNaN(expiresAt) || expiresAt <= Date.now();
+
+  const parsed = cachedPlaceSchema.safeParse(row.data);
+  const consistent =
+    parsed.success &&
+    parsed.data.place.id === parsed.data.detail.placeId &&
+    String(parsed.data.place.id) === row.place_id;
+  if (!parsed.success || !consistent) {
+    console.warn(`place_cache 검증 실패로 캐시 없음 처리: place_id=${rowId}`);
+    return null;
+  }
+  return { cached: parsed.data, expired };
+}

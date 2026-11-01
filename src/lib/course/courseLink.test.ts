@@ -2,7 +2,7 @@
 // 실행: npx -y tsx@4.23.12 --conditions=react-server --test src/lib/course/courseLink.test.ts
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { buildCourseBackHref } from "@/lib/course/courseLink";
+import { buildCourseBackHref, buildCourseShareUrl } from "@/lib/course/courseLink";
 
 const ID = "6122d3c5-b0a3-4218-bcac-0cbfffca606b";
 
@@ -38,4 +38,23 @@ test("값이 없거나 배열이면(?course=a&course=b) 받지 않는다", () =>
   assert.equal(buildCourseBackHref(undefined), undefined);
   assert.equal(buildCourseBackHref(null), undefined);
   assert.equal(buildCourseBackHref([ID, ID]), undefined);
+});
+
+test("링크 복사 주소: origin과 id만 쓰고 쿼리와 해시는 없다", () => {
+  assert.equal(buildCourseShareUrl("https://baljaguk.example", ID), `https://baljaguk.example/course/${ID}`);
+  assert.equal(buildCourseShareUrl("http://localhost:3000", ID), `http://localhost:3000/course/${ID}`);
+  // origin에 경로나 쿼리가 섞여 있어도 origin만 쓴다.
+  assert.equal(buildCourseShareUrl("https://baljaguk.example/places?mood=x#y", ID), `https://baljaguk.example/course/${ID}`);
+});
+
+test("링크 복사 주소: uuid가 아니면 만들지 않는다", () => {
+  for (const id of ["", "abc", `${ID}?x=1`, `${ID}#x`, ` ${ID}`, "../" + ID]) {
+    assert.equal(buildCourseShareUrl("https://baljaguk.example", id), undefined, id);
+  }
+});
+
+test("링크 복사 주소: http(s)가 아닌 origin은 받지 않는다", () => {
+  for (const origin of ["", "not a url", "javascript:alert(1)", "ftp://x.example", "data:text/plain,x"]) {
+    assert.equal(buildCourseShareUrl(origin, ID), undefined, origin);
+  }
 });
