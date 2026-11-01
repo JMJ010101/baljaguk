@@ -56,7 +56,7 @@ src/
 ├─ lib/
 │  ├─ ai/ (client.ts, parse.ts, picks.ts, constants.ts, types.ts, prompts/)
 │  ├─ tour/ (client.ts, normalize.ts, places.ts, placeDetail.ts, regions.ts, contentTypes.ts, candidates.ts)
-│  ├─ course/ (assemble.ts, constants.ts, courseLink.ts, distance.ts, errorScreen.ts, formErrors.ts, generate.ts, input.ts, places.ts, progress.ts, regionName.ts, sigungu.ts, size.ts, submit.ts, summary.ts, types.ts)
+│  ├─ course/ (assemble.ts, constants.ts, courseLink.ts, distance.ts, errorScreen.ts, formErrors.ts, generate.ts, input.ts, places.ts, prefill.ts, progress.ts, regionName.ts, sigungu.ts, size.ts, submit.ts, summary.ts, types.ts)
 │  ├─ db/ (client.ts, courses.ts, errors.ts, placeCache.ts, usage.ts)
 │  ├─ personas/ (index.ts, pet.ts)
 │  ├─ errors.ts, errorResponse.ts, clientIp.ts, deadline.ts, placeId.ts, placesQuery.ts, rateLimit.ts
@@ -73,7 +73,7 @@ db/migrations/
 - 장소 목록의 카드(PlaceCard)에는 "방문 전 확인 필요"를 넣지 않는다. 카드는 동반 조건이나 영업시간을 보여 주지 않기 때문이다. 상세 화면과, footer로 동반 구분과 운영시간을 보여 주는 코스 화면에서 쓴다.
 - 장소 상세(app/places/[id]/page.tsx)는 서버 컴포넌트에서 getPlaceDetail()을 직접 호출한다. 자기 API(/api/places/[id])를 다시 부르지 않는다. "목록으로" 링크는 sido/type/page 쿼리를 유지한다. 목록의 카드 링크가 같은 쿼리를 상세 주소에 실어 보낸다.
 - 홈(app/page.tsx)은 데이터를 불러오지 않는 정적 서버 컴포넌트다(빌드에서 ○). 소개 문구, 코스 만들기 주 버튼(/course/new), 장소 둘러보기 보조 버튼(/places), 한국관광공사 데이터 문구로 이루어진다.
-- 코스 만들기(app/course/new/page.tsx)는 서버 컴포넌트에서 getSidoList()로 시도 목록을 가져와 클라이언트 컴포넌트(CourseForm)에 내려 준다. 시군구는 시도를 고르면 useSigungu가 /api/regions?sido=를 불러 받고, 성공한 시도는 저장해 다시 부르지 않으며 실패는 저장하지 않고 자동 재시도하지 않는다. 제출은 lib/course/submit.ts의 postCourse가 /api/course를 호출하고(클라이언트 대기 COURSE_CLIENT_WAIT_MS), 성공하면 router.push로 /course/<id>(id만)로 이동한다. 오류 결과는 lib/course/errorScreen.ts가 화면 6종 또는 폼 상단 오류 박스(INVALID_INPUT 400)로 분류한다. 생성 중 화면은 경과 시간별 문구만 보여 주고 퍼센트는 없다(progress.ts).
+- 코스 만들기(app/course/new/page.tsx)는 서버 컴포넌트에서 getSidoList()로 시도 목록을 가져와 클라이언트 컴포넌트(CourseForm)에 내려 준다. 시군구는 시도를 고르면 useSigungu가 /api/regions?sido=를 불러 받고, 성공한 시도는 저장해 다시 부르지 않으며 실패는 저장하지 않고 자동 재시도하지 않는다. 이 호출은 클라이언트 대기(SIGUNGU_CLIENT_WAIT_MS)를 넘기면 다른 실패와 같이 처리한다(같은 안내와 "시·군·구 다시 불러오기" 버튼). 제출은 lib/course/submit.ts의 postCourse가 /api/course를 호출하고(클라이언트 대기 COURSE_CLIENT_WAIT_MS), 성공하면 router.push로 /course/<id>(id만)로 이동한다. 오류 결과는 lib/course/errorScreen.ts가 화면 6종 또는 폼 상단 오류 박스(INVALID_INPUT 400)로 분류한다. 생성 중 화면은 경과 시간별 문구만 보여 주고 퍼센트는 없다(progress.ts).
 - 코스 결과(app/course/[id]/page.tsx)는 서버 컴포넌트에서 getCourse()를 직접 호출한다. null이면 notFound()로 course/[id]/not-found.tsx를, DB 오류이면 CourseStatus를 보여 준다. 장소는 lib/course/places.ts의 loadCoursePlaces가 모든 장소를 동시에 조회한다. 장소마다 getCachedPlaceAnyAge로 읽어 행이 있으면 만료됐어도 그대로 쓰고(만료면 "정보가 오래됐을 수 있어요." 표시, 관광공사 호출 없음), 행이 없을 때만 호출 한도를 코스당 한 번 확인한 뒤 getPlaceDetail로 채운다. 일부 장소만 실패하면 그 순서 칸만 대체 카드로 두고, 전부 실패하면 오류 화면이다.
 - PlaceCard는 선택 props badge(순서 번호)와 footer(아래 줄)를 받는다. 코스 화면이 footer에 동반 구분, 운영시간, "방문 전 확인 필요"를 넣는다. 링크 복사 주소는 buildCourseShareUrl(origin, id)로 만들며 id만 쓴다.
 - db/migrations/ 에는 번호를 붙인 SQL 파일만 둔다.
@@ -208,7 +208,8 @@ db/migrations/
 - 코스 장소 중 한 곳이라도 DB 오류이면 코스 전체가 DB 오류 화면이 된다.
 - 코스 결과의 지역 이름 칩과 카카오 지도 영역은 만들지 않았다. 코스는 시도·시군구 코드만 갖고 있고 코드를 이름으로 바꾸려면 getSidoList() 등 추가 호출이 필요하다. 지도는 위 카카오 확인 전이라 만들지 않는다.
 - 코스 카드는 /places/<id>로만 연결한다. 장소 상세의 "코스로 돌아가기"(?course=)는 연결하지 않았다. buildCourseBackHref는 순수 함수만 있고 상세 화면은 ?course=를 읽지 않는다.
-- 브라우저에서 직접 확인하지 못한 항목: 홈, /course/new(시군구 선택, 유형 칩, mood 입력, 오류 6종), /course/[id](카드, 만료 표시, 대체 카드, 링크 복사 성공과 실패 폴백), 모든 화면의 360px 레이아웃. 컴포넌트와 useSigungu 훅은 단위 테스트가 없다. 실제 DB로 코스 생성부터 결과 화면까지의 흐름도 실행해 보지 못했다. TODO(확인 필요)
+- 시군구 호출의 클라이언트 대기(SIGUNGU_CLIENT_WAIT_MS, lib/course/constants.ts)는 서버가 캐시 없이 가장 오래 걸리는 경로의 단순 합 18초(호출 한도 확인의 건수 조회 DB 5초 + 사용 기록 DB 5초 + 관광공사 8초)에 여유를 더한 값이다. 콜드 스타트 같은 다른 서버 지연은 반영하지 못했다. 응답이 멈추면 최대 이만큼 기다리고, 미리 채운 시군구가 있으면 그동안 제출 버튼이 막힌다. 이 타임아웃 패턴은 submit.ts의 postCourse를 복사한 것이라 중복이다. TODO(확인 필요)
+- 브라우저에서 직접 확인하지 못한 항목: 코스 생성 성공 후 결과 화면 전체, 링크 복사(성공과 실패 폴백), 다시 만들기 주소와 폼 채움, 새로고침 시 관광공사 호출 여부, 조건 부족(422) 화면과 "조건 바꾸기" 후 값 유지, 시간 초과/장소 정보 실패/코스 생성 실패/DB 연결 실패 화면, 모든 화면의 360px 레이아웃. 시군구 호출이 응답 없이 멈추는 상황은 만들지 못했고 타임아웃은 단위 테스트로만 확인했다. 컴포넌트와 useSigungu 훅은 단위 테스트가 없다. 실제 DB로 코스 생성부터 결과 화면까지의 흐름도 실행해 보지 못했다. TODO(확인 필요)
 
 ## 작업 방식
 - 한 번에 한 기능씩 구현한다.
