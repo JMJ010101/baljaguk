@@ -1,9 +1,11 @@
 import Link from "next/link";
 import Button from "@/components/Button";
 import CopyLinkButton from "@/components/course/CopyLinkButton";
+import CourseMap from "@/components/course/CourseMap";
 import PlaceCard from "@/components/PlaceCard";
 import Tag from "@/components/Tag";
 import VisitCheckNotice from "@/components/VisitCheckNotice";
+import { buildMapStops } from "@/lib/course/mapStops";
 import type { CoursePlace } from "@/lib/course/places";
 import { buildRecreateHref } from "@/lib/course/prefill";
 import { missingTypeNotices, placeCountLabel } from "@/lib/course/summary";
@@ -13,7 +15,8 @@ import { supportsOperatingInfo } from "@/lib/tour/normalize";
 // 코스 결과 화면이다. 저장용 타입이 아니라 PublicCourse만 받는다. (사용자가 쓴 분위기는 이 화면에 오지 않는다)
 // 문구는 DESIGN.md의 "세부 문구 확정"이 정해지기 전의 초안이다.
 // TODO(확인 필요): 카드 링크에 ?course=를 싣고 상세의 "코스로 돌아가기"를 연결하는 일은 이번 범위가 아니다. (카드는 /places/<id>로만 간다)
-// TODO(확인 필요): 와이어프레임의 지도 영역(카카오 지도)은 지도 관련 확인 전이라 만들지 않았다. 지역 이름 칩도 같은 이유로 없다. (summary.ts 참고)
+// 지도는 이미 읽은 장소의 좌표만 쓴다. (mapStops.ts) 지도가 실패해도 카드 목록은 그대로 보인다.
+// TODO(확인 필요): 지역 이름 칩은 코드를 이름으로 바꾸는 호출이 필요해서 만들지 않았다. (summary.ts 참고)
 // TODO(확인 필요): 사진 출처 표기 조건을 확인하기 전이라 사진 출처 문구는 쓰지 않는다.
 
 function NumberBadge({ order }: { order: number }) {
@@ -106,6 +109,7 @@ function FailedStop({ stop, order }: { stop: Extract<CoursePlace, { kind: "faile
 
 export default function CourseResult({ course, places }: { course: PublicCourse; places: CoursePlace[] }) {
   const notices = missingTypeNotices(course.missingTypes);
+  const { stops: mapStops, hiddenCount } = buildMapStops(places);
 
   return (
     <main className="mx-auto w-full max-w-md flex-1 px-4 pb-12 pt-6">
@@ -122,6 +126,8 @@ export default function CourseResult({ course, places }: { course: PublicCourse;
           ))}
         </ul>
       )}
+
+      <CourseMap stops={mapStops} hiddenCount={hiddenCount} />
 
       <ol className="mt-6 flex flex-col gap-4">
         {places.map((stop, index) => (

@@ -40,3 +40,11 @@ export const COURSE_CLIENT_WAIT_MS = 100_000;
 export const SIGUNGU_CLIENT_WAIT_MS = 25_000;
 // 생성 중 진행 안내 문구가 바뀌는 경과 시간이다. 임시값이며 실제 서버 단계와 연결하지 않는다.
 export const PROGRESS_STAGE_START_MS: readonly number[] = [0, 10_000, 30_000, 60_000];
+
+// 카카오 지도(코스 결과 화면). 아래 세 값은 모두 임시값이고 공식 문서에서 근거를 찾지 못했다. (확인 필요)
+// 지도 SDK를 불러오는 데 기다리는 최대 시간이다. 넘기면 로드 실패 화면(코스 목록은 그대로)을 보여 준다.
+export const KAKAO_MAP_LOAD_WAIT_MS = 10_000;
+// 장소가 1곳일 때의 지도 확대 수준이다. 카카오 지도는 숫자가 작을수록 가깝게 보인다.
+export const KAKAO_MAP_SINGLE_STOP_LEVEL = 4;
+// 여러 곳을 한 화면에 맞출 때 가장자리에 남기는 여백(px)이다.
+export const KAKAO_MAP_BOUNDS_PADDING_PX = 32;
