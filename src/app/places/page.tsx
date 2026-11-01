@@ -30,7 +30,7 @@ export default async function PlacesPage() {
   return (
     <main className="mx-auto w-full max-w-md flex-1 px-4 pb-12 pt-6">
       <h1 className="text-2xl font-bold">장소 둘러보기</h1>
-      <p className="mt-2 text-base text-muted">반려동물과 함께 갈 수 있는 장소예요.</p>
+      <p className="mt-2 text-base text-muted">반려동물 동반 정보가 있는 장소예요.</p>
       <div className="mt-6">
         {/* useSearchParams를 쓰는 클라이언트 컴포넌트는 Suspense 안에 둔다. */}
         <Suspense fallback={<PlacesLoading />}>
