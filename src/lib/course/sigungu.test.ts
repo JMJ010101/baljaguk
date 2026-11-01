@@ -87,3 +87,69 @@ test("안내 문구: 어느 경우든 시군구 없이 만들 수 있다고 알�
   assert.match(sigunguNotice({ kind: "rate-limit" }), /^잠시 후 다시 시도해 주세요\./);
   assert.match(sigunguNotice({ kind: "empty" }), /지역 전체/);
 });
+
+// 클라이언트 대기(시간 초과). 짧은 waitMs와 가짜 fetch로 분기만 확인한다.
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+test("시간 초과: 응답이 멈추면 waitMs 뒤 error (취소가 아니다)", async () => {
+  const neverAborted = new AbortController();
+  const startedAt = Date.now();
+  const outcome = await fetchSigungu("11", { signal: neverAborted.signal, waitMs: 20, fetchImpl: hangingFetch });
+  assert.deepEqual(outcome, { kind: "error" });
+  assert.ok(Date.now() - startedAt < 1000);
+  assert.equal(neverAborted.signal.aborted, false);
+});
+
+test("시간 초과: 본문 읽기가 멈춰도 error", async () => {
+  const stuckBody: typeof fetch = async (_url, init) =>
+    ({
+      ok: true,
+      status: 200,
+      json: () =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+        }),
+    }) as unknown as Response;
+  assert.deepEqual(await fetchSigungu("11", { waitMs: 20, fetchImpl: stuckBody }), { kind: "error" });
+});
+
+test("정상 응답이 waitMs 안에 오면 끊지 않는다", async () => {
+  const slowButInTime: typeof fetch = async () => {
+    await sleep(20);
+    return json({ regions: [{ code: "110", name: "종로구" }] });
+  };
+  assert.deepEqual(await fetchSigungu("11", { waitMs: 500, fetchImpl: slowButInTime }), {
+    kind: "ok",
+    regions: [{ code: "110", name: "종로구" }],
+  });
+});
+
+test("시간 초과 전에 호출하는 쪽이 취소하면 aborted (오류가 아니다)", async () => {
+  const controller = new AbortController();
+  const pending = fetchSigungu("11", { signal: controller.signal, waitMs: 500, fetchImpl: hangingFetch });
+  await sleep(10);
+  controller.abort();
+  assert.deepEqual(await pending, { kind: "aborted" });
+});
+
+test("시간 초과 뒤 같은 시도로 다시 부르면 새 타이머로 처리한다", async () => {
+  assert.deepEqual(await fetchSigungu("11", { waitMs: 20, fetchImpl: hangingFetch }), { kind: "error" });
+  assert.deepEqual(
+    await fetchSigungu("11", { waitMs: 500, fetchImpl: async () => json({ regions: [{ code: "110", name: "종로구" }] }) }),
+    { kind: "ok", regions: [{ code: "110", name: "종로구" }] },
+  );
+});
+
+test("타이머 정리: 응답이 오면 기본 대기 타이머가 남지 않는다", async () => {
+  const timers = () => process.getActiveResourcesInfo().filter((name) => name === "Timeout").length;
+  const before = timers();
+  await fetchSigungu("11", { fetchImpl: async () => json({ regions: [{ code: "110", name: "종로구" }] }) });
+  assert.equal(timers(), before);
+  // 오류 응답과 취소에서도 남지 않는다.
+  await fetchSigungu("11", { fetchImpl: async () => json({ error: { code: "API_FAILED" } }, 502) });
+  const controller = new AbortController();
+  const pending = fetchSigungu("11", { signal: controller.signal, fetchImpl: hangingFetch });
+  controller.abort();
+  await pending;
+  assert.equal(timers(), before);
+});

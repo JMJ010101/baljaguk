@@ -2,6 +2,7 @@
 // 시군구는 선택 항목이라 실패해도 폼은 막히지 않는다. 실패 문구는 이 파일에서 정한다. 새 오류 화면은 만들지 않는다.
 // 클라이언트에서 쓴다. server-only 파일을 import하지 않는다.
 import { z } from "zod";
+import { SIGUNGU_CLIENT_WAIT_MS } from "@/lib/course/constants";
 import type { Region } from "@/types";
 
 const REGIONS_API_URL = "/api/regions";
@@ -24,21 +25,43 @@ const errorSchema = z.object({
 });
 
 export type FetchSigunguOptions = {
+  // 호출하는 쪽의 취소다. (시도를 바꾸거나 화면이 사라질 때) 취소는 오류가 아니라 aborted다.
   signal?: AbortSignal;
+  waitMs?: number;
   // 테스트에서 가짜 fetch를 넣는다.
   fetchImpl?: typeof fetch;
 };
 
+// 대기 시간(SIGUNGU_CLIENT_WAIT_MS)을 넘기면 다른 실패와 같은 { kind: "error" }다. (같은 안내와 "시·군·구 다시 불러오기" 버튼)
+// TODO: 컨트롤러 하나로 시간 초과와 외부 취소를 모으는 아래 패턴은 submit.ts의 postCourse와 같다. 복사해서 썼다.
+// 공용 함수로 빼려면 submit.ts도 바꿔야 해서 이번에는 두었다.
 export async function fetchSigungu(sido: string, options: FetchSigunguOptions = {}): Promise<SigunguOutcome> {
-  const { signal, fetchImpl = fetch } = options;
+  const { signal, waitMs = SIGUNGU_CLIENT_WAIT_MS, fetchImpl = fetch } = options;
   if (signal?.aborted) return { kind: "aborted" };
+
+  // AbortSignal.any는 오래된 브라우저에 없어서 쓰지 않고, 컨트롤러 하나에 두 원인을 모은다.
+  const controller = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, waitMs);
+  const onExternalAbort = () => controller.abort();
+  signal?.addEventListener("abort", onExternalAbort);
+
+  // 중단된 원인을 가린다. 시간 초과가 우선이고, 호출하는 쪽의 취소만 aborted다.
+  const interrupted = (): SigunguOutcome => {
+    if (timedOut) return { kind: "error" };
+    return signal?.aborted ? { kind: "aborted" } : { kind: "error" };
+  };
+
   try {
-    const res = await fetchImpl(`${REGIONS_API_URL}?sido=${encodeURIComponent(sido)}`, { signal });
+    const res = await fetchImpl(`${REGIONS_API_URL}?sido=${encodeURIComponent(sido)}`, { signal: controller.signal });
     let json: unknown;
     try {
       json = await res.json();
     } catch {
-      return signal?.aborted ? { kind: "aborted" } : { kind: "error" };
+      return interrupted();
     }
 
     if (res.ok) {
@@ -54,7 +77,10 @@ export async function fetchSigungu(sido: string, options: FetchSigunguOptions = 
     if (code === "INVALID_INPUT" && res.status === HTTP_NOT_FOUND) return { kind: "empty" };
     return { kind: "error" };
   } catch {
-    return signal?.aborted ? { kind: "aborted" } : { kind: "error" };
+    return interrupted();
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", onExternalAbort);
   }
 }
 
