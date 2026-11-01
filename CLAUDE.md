@@ -3,7 +3,7 @@
 ## 프로젝트 개요
 - 이름: 발자국
 - 소개: 반려동물 동반 정보가 있는 장소로 하루 여행 코스를 만들어주는 서비스
-- 목적: 5~6일 안에 만드는 개인 프로젝트이자 포트폴리오다. 구조 설계, 오류 처리, 프롬프트 버전 비교를 보여주는 것이 목표다.
+- 목적: 5~6일 안에 만드는 개인 프로젝트이자 포트폴리오다. 구조 설계와 오류 처리를 보여주는 것이 목표다.
 - 개발 방식: 바이브코딩 (Claude Code + VS Code)
 
 ## 기술 스택
@@ -12,7 +12,7 @@
 - 추가로 설치할 패키지는 없다. OpenAI는 SDK 없이 fetch로 호출한다.
 - DB: Supabase (Postgres)
 - AI: OpenAI API / 모델명: gpt-6-luna로 정함(사용자 결정). 가격, 구조화 출력, 추론 설정은 확인 필요
-- 모델명은 한 곳(상수 또는 환경변수)에서만 정의한다. 프롬프트 버전을 비교할 때는 같은 모델로 비교한다.
+- 모델명은 한 곳(상수 또는 환경변수)에서만 정의한다.
 - 검증: zod
 - 장소 데이터: 한국관광공사 '반려동물 동반여행 서비스' API (공공데이터포털, 인증키 필요)
 - 지도: 카카오 지도 API. 관광공사 API 응답에 좌표 필드(mapx, mapy)가 있으나 선택 항목이라 비어 있을 수 있다.
@@ -41,7 +41,7 @@
    - 검증에 실패하면 재시도하거나 사용자에게 오류 안내를 보여준다.
    - 검증되지 않은 AI 응답을 그대로 화면이나 DB에 쓰지 않는다.
 4. 정보가 틀릴 수 있는 항목(동반 조건, 운영시간 등)에는 "방문 전 확인 필요" 안내를 표시한다.
-5. 프롬프트는 lib/ai/prompts/ 에 버전 파일(v1, v2)로 관리한다.
+5. 프롬프트는 lib/ai/prompts/에 버전별 파일로 관리한다. 현재 v1만 있고 코스 생성이 v1을 쓴다.
    - 프롬프트 문자열을 코드 곳곳에 흩어놓지 않는다.
 6. 페르소나(반려동물 프로필 기반 규칙)는 함수로 분리한다.
    - 나중에 다른 페르소나를 추가할 수 있는 구조로 만든다.
@@ -50,7 +50,7 @@
 ## 폴더 구조
 ```
 src/
-├─ app/ (page.tsx, places/page.tsx, places/[id]/page.tsx, places/[id]/loading.tsx, course/new/page.tsx, course/[id]/page.tsx, course/[id]/loading.tsx, course/[id]/not-found.tsx, lab/ (예정, 미구현), about/ (예정, 미구현), error.tsx, not-found.tsx)
+├─ app/ (page.tsx, places/page.tsx, places/[id]/page.tsx, places/[id]/loading.tsx, course/new/page.tsx, course/[id]/page.tsx, course/[id]/loading.tsx, course/[id]/not-found.tsx, about/ (예정, 미구현), error.tsx, not-found.tsx)
 ├─ app/api/ (places/route.ts, places/[id]/route.ts, regions/route.ts, course/route.ts)
 ├─ components/ (Button.tsx, Header.tsx, Pagination.tsx, PlaceCard.tsx, PlaceImage.tsx, RefreshButton.tsx, StatusScreen.tsx, Tag.tsx, VisitCheckNotice.tsx, places/InfoRow.tsx, places/InfoSection.tsx, places/PlaceDetailStatus.tsx, places/PlaceDetailView.tsx, places/PlacesExplorer.tsx, places/PlacesStatus.tsx, course/CopyLinkButton.tsx, course/CourseError.tsx, course/CourseForm.tsx, course/CourseProgress.tsx, course/CourseResult.tsx, course/CourseStatus.tsx, course/useSigungu.ts)
 ├─ lib/
