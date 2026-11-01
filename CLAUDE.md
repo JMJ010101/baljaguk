@@ -15,16 +15,16 @@
 - 모델명은 한 곳(상수 또는 환경변수)에서만 정의한다.
 - 검증: zod
 - 장소 데이터: 한국관광공사 '반려동물 동반여행 서비스' API (공공데이터포털, 인증키 필요)
-- 지도: 카카오 지도 API. 관광공사 API 응답에 좌표 필드(mapx, mapy)가 있으나 선택 항목이라 비어 있을 수 있다.
+- 지도: 카카오 지도 API. 관광공사 API 응답에 좌표 필드(mapx, mapy)가 있으나 선택 항목이라 비어 있을 수 있다. 코스 결과 화면(/course/[id])에 카카오맵 JavaScript SDK로 구현했다. 장소 상세와 목록의 지도는 아직 없다.
 - 카카오 키는 2종류이고 용도가 다르다. (카카오 공식 문서 기준)
   - JavaScript 키: 브라우저에서 지도 Web(JavaScript) SDK를 쓸 때 사용한다. 이 키에 'JavaScript SDK 도메인'을 등록해야 한다.
   - REST API 키: 서버에서 REST API(장소 검색, 좌표 변환 등)를 호출할 때 사용한다. 허용 IP를 설정할 수 있다.
   - 지도 SDK에 REST API 키를 넣으면 에러가 난다. 키를 서로 바꿔 쓰지 않는다.
 - 카카오디벨로퍼스에서 앱을 만들고 카카오맵 API 사용 설정을 ON으로 해야 한다.
-- 카카오맵 API에는 무료 쿼터가 있고, 소진하면 429 에러가 난다. 429는 RATE_LIMIT으로 변환한다. (제안)
+- 카카오맵 API에는 무료 쿼터가 있고, 소진하면 429 에러가 난다. 쿼터 숫자는 바뀔 수 있어 여기에 옮겨 적지 않고 공식 문서를 따른다. (https://developers.kakao.com/docs/ko/getting-started/quota) 브라우저의 지도 SDK 오류는 AppError로 바꾸지 않는다. 서버에서 카카오 REST API를 쓰게 되면 그때의 429는 RATE_LIMIT으로 변환한다. (제안)
 - 카카오 REST API 사용 여부: TODO(확인 필요): 쓰기로 정하기 전에는 REST API 키를 쓰는 코드를 만들지 않는다.
-- TODO(확인 필요): 개발 주소(localhost)와 Vercel 배포 주소를 JavaScript SDK 도메인에 각각 등록해야 하는지, Next.js(App Router)에서 SDK를 불러오는 방법은 카카오 공식 문서를 확인한 뒤 기록
-- 위 항목을 확인하기 전에는 지도 관련 패키지를 설치하지 않는다.
+- 지도 SDK는 패키지 없이 스크립트 태그를 동적으로 넣어 불러온다(autoload=false, kakao.maps.load). 키는 환경변수 NEXT_PUBLIC_KAKAO_JS_KEY이고 NEXT_PUBLIC_ 접두사는 이 변수에만 쓴다. 도메인은 [앱] > [플랫폼 키] > [JavaScript 키] > [JavaScript SDK 도메인]에 등록하고, 카카오맵 [사용 설정]은 ON이어야 한다. (https://developers.kakao.com/docs/ko/javascript/getting-started)
+- 지도 관련 패키지는 설치하지 않는다. 타입은 손으로 선언한다.
 
 ## 빌드/실행 명령어
 - 개발 서버 `npm run dev` / 빌드 `npm run build` / 빌드 결과 실행 `npm run start` / 린트 `npm run lint`
@@ -52,11 +52,11 @@
 src/
 ├─ app/ (page.tsx, places/page.tsx, places/[id]/page.tsx, places/[id]/loading.tsx, course/new/page.tsx, course/[id]/page.tsx, course/[id]/loading.tsx, course/[id]/not-found.tsx, about/ (예정, 미구현), error.tsx, not-found.tsx)
 ├─ app/api/ (places/route.ts, places/[id]/route.ts, regions/route.ts, course/route.ts)
-├─ components/ (Button.tsx, Header.tsx, Pagination.tsx, PlaceCard.tsx, PlaceImage.tsx, RefreshButton.tsx, StatusScreen.tsx, Tag.tsx, VisitCheckNotice.tsx, places/InfoRow.tsx, places/InfoSection.tsx, places/PlaceDetailStatus.tsx, places/PlaceDetailView.tsx, places/PlacesExplorer.tsx, places/PlacesStatus.tsx, course/CopyLinkButton.tsx, course/CourseError.tsx, course/CourseForm.tsx, course/CourseProgress.tsx, course/CourseResult.tsx, course/CourseStatus.tsx, course/useSigungu.ts)
+├─ components/ (Button.tsx, Header.tsx, Pagination.tsx, PlaceCard.tsx, PlaceImage.tsx, RefreshButton.tsx, StatusScreen.tsx, Tag.tsx, VisitCheckNotice.tsx, places/InfoRow.tsx, places/InfoSection.tsx, places/PlaceDetailStatus.tsx, places/PlaceDetailView.tsx, places/PlacesExplorer.tsx, places/PlacesStatus.tsx, course/CopyLinkButton.tsx, course/CourseError.tsx, course/CourseForm.tsx, course/CourseProgress.tsx, course/CourseResult.tsx, course/CourseStatus.tsx, course/useSigungu.ts, course/CourseMap.tsx, course/kakaoMapSdk.ts)
 ├─ lib/
 │  ├─ ai/ (client.ts, parse.ts, picks.ts, constants.ts, types.ts, prompts/)
 │  ├─ tour/ (client.ts, normalize.ts, places.ts, placeDetail.ts, regions.ts, contentTypes.ts, candidates.ts)
-│  ├─ course/ (assemble.ts, constants.ts, courseLink.ts, distance.ts, errorScreen.ts, formErrors.ts, generate.ts, input.ts, places.ts, prefill.ts, progress.ts, regionName.ts, sigungu.ts, size.ts, submit.ts, summary.ts, types.ts)
+│  ├─ course/ (assemble.ts, constants.ts, courseLink.ts, distance.ts, errorScreen.ts, formErrors.ts, generate.ts, input.ts, mapStops.ts, places.ts, prefill.ts, progress.ts, regionName.ts, sigungu.ts, size.ts, submit.ts, summary.ts, types.ts)
 │  ├─ db/ (client.ts, courses.ts, errors.ts, placeCache.ts, usage.ts)
 │  ├─ personas/ (index.ts, pet.ts)
 │  ├─ errors.ts, errorResponse.ts, clientIp.ts, deadline.ts, placeId.ts, placesQuery.ts, rateLimit.ts
@@ -85,7 +85,7 @@ db/migrations/
 - 서버에서 읽는 환경변수 이름은 SUPABASE_URL, SUPABASE_SECRET_KEY, TOUR_API_KEY, OPENAI_API_KEY, RATE_LIMIT_SALT다. 모두 NEXT_PUBLIC_ 접두사를 붙이지 않는다.
 - Supabase는 secret 키(sb_secret_...)를 쓴다. 레거시 service_role 키는 쓰지 않는다.
 - publishable 키는 로그인을 만들기 전까지 쓰지 않는다. 브라우저에서 Supabase를 직접 호출하지 않는다.
-- 카카오 JavaScript 키는 브라우저에서 쓰는 키이므로 이 규칙의 예외다. 대신 JavaScript SDK 도메인 등록으로 사용 범위를 제한한다.
+- 카카오 JavaScript 키는 브라우저에서 쓰는 키이므로 이 규칙의 예외다. 환경변수 이름은 NEXT_PUBLIC_KAKAO_JS_KEY이고 이 변수에만 NEXT_PUBLIC_ 접두사를 쓴다. 대신 JavaScript SDK 도메인 등록으로 사용 범위를 제한한다.
 - 카카오 REST API 키는 서버 전용이다. NEXT_PUBLIC_ 접두사를 붙이지 않는다.
 - .env* 파일은 커밋하지 않는다. .gitignore에 포함되어 있는지 가장 먼저 확인한다.
 - lib/db 안의 파일은 'server-only'를 import한다.
@@ -206,10 +206,12 @@ db/migrations/
 - /course/[id]에서 캐시 행이 없는 장소의 getPlaceDetail 폴백은 공개 링크를 여는 것만으로 관광공사를 부를 수 있다. 장소 한 곳이 3번이므로 최대 15번(COURSE_MAX_COUNT 5곳 x 3)이다. 장소를 동시에 조회해도 places 호출 한도는 코스 한 번당 한 번만 센다. 캐시 행을 지우는 코드는 찾지 못했지만 배포 DB에서는 확인하지 못했다. TODO(확인 필요)
 - /course/[id]를 캐시 적중만으로 열 때는 getCourse와 getCachedPlaceAnyAge의 DB 읽기만 하고 호출 한도 확인과 usage_log 기록이 없다. 반복 조회에 한도가 없다. 의도한 설계인지 정하지 않았다. TODO(확인 필요)
 - 코스 장소 중 한 곳이라도 DB 오류이면 코스 전체가 DB 오류 화면이 된다.
-- 코스 결과의 지역 이름 칩과 카카오 지도 영역은 만들지 않았다. 코스는 시도·시군구 코드만 갖고 있고 코드를 이름으로 바꾸려면 getSidoList() 등 추가 호출이 필요하다. 지도는 위 카카오 확인 전이라 만들지 않는다.
+- 코스 결과의 지역 이름 칩은 만들지 않았다. 코스는 시도·시군구 코드만 갖고 있고 코드를 이름으로 바꾸려면 getSidoList() 등 추가 호출이 필요하다.
+- 코스 결과 지도에서 키 없음, SDK 로드 실패, 시간 초과, 도메인 미등록은 사용자에게 같은 실패 화면으로 보인다. 카카오가 도메인 미등록일 때 어떻게 응답하는지 공식 문서에 없어 구분하지 못했다. 카카오맵 [사용 설정]이 OFF일 때도 지도가 실패 화면으로 보였다(실제로 겪은 사례). 어느 경우에도 코스 카드 목록은 그대로 보인다. TODO(확인 필요)
+- 카카오 지도: 쿼터를 세는 단위(지도 한 번 로드가 몇 건인지), 도메인 등록 규칙(localhost의 포트 포함 여부, Vercel preview 도메인), 지도 사용에 필요한 출처 표기 요건은 공식 문서에서 확인하지 못했다. 로드 대기 10초, 장소 1곳일 때 확대 수준, 여백은 근거 없는 임시값이다(lib/course/constants.ts). TODO(확인 필요)
 - 코스 카드는 /places/<id>로만 연결한다. 장소 상세의 "코스로 돌아가기"(?course=)는 연결하지 않았다. buildCourseBackHref는 순수 함수만 있고 상세 화면은 ?course=를 읽지 않는다.
 - 시군구 호출의 클라이언트 대기(SIGUNGU_CLIENT_WAIT_MS, lib/course/constants.ts)는 서버가 캐시 없이 가장 오래 걸리는 경로의 단순 합 18초(호출 한도 확인의 건수 조회 DB 5초 + 사용 기록 DB 5초 + 관광공사 8초)에 여유를 더한 값이다. 콜드 스타트 같은 다른 서버 지연은 반영하지 못했다. 응답이 멈추면 최대 이만큼 기다리고, 미리 채운 시군구가 있으면 그동안 제출 버튼이 막힌다. 이 타임아웃 패턴은 submit.ts의 postCourse를 복사한 것이라 중복이다. TODO(확인 필요)
-- 브라우저에서 직접 확인하지 못한 항목: 링크 복사 실패 안내(클립보드 거절 시 입력칸 폴백), 캐시가 만료된 뒤와 캐시 행이 없을 때의 장소 조회 폴백(방금 만든 코스의 새로고침은 usage_log의 행 수와 최신 시각이 그대로여서 캐시 적중으로 확인했다), 조건 부족(422) 화면과 "조건 바꾸기" 후 값 유지, 시간 초과/장소 정보 실패/코스 생성 실패/DB 연결 실패 화면. 시군구 호출이 응답 없이 멈추는 상황은 만들지 못했고 타임아웃은 단위 테스트로만 확인했다. 컴포넌트와 useSigungu 훅은 단위 테스트가 없다. TODO(확인 필요)
+- 브라우저에서 직접 확인하지 못한 항목: 링크 복사 실패 안내(클립보드 거절 시 입력칸 폴백), 캐시가 만료된 뒤와 캐시 행이 없을 때의 장소 조회 폴백(방금 만든 코스의 새로고침은 usage_log의 행 수와 최신 시각이 그대로여서 캐시 적중으로 확인했다), 조건 부족(422) 화면과 "조건 바꾸기" 후 값 유지, 시간 초과/장소 정보 실패/코스 생성 실패/DB 연결 실패 화면, 카카오 키가 없거나 도메인이 등록되지 않았을 때의 지도 실패 화면, 모바일에서 지도 위 스와이프 시 페이지 스크롤. 시군구 호출이 응답 없이 멈추는 상황은 만들지 못했고 타임아웃은 단위 테스트로만 확인했다. 컴포넌트와 useSigungu 훅은 단위 테스트가 없다. TODO(확인 필요)
 
 ## 작업 방식
 - 한 번에 한 기능씩 구현한다.
