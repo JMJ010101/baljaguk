@@ -18,10 +18,17 @@
   --radius-tag: 999px;
 
   --shadow-card: 0 2px 8px rgb(36 48 39 / 0.08);
+
+  /* 글씨 크기: Tailwind 기본값(base 16, lg 18, xl 20, 2xl 24)보다 약간 줄인 값이다.
+     sm(14px)은 안내 글자의 최소 크기(DESIGN.md)라 그대로 둔다. 줄 간격은 크기에 비례한다. */
+  --text-base: 0.9375rem;
+  --text-lg: 1.0625rem;
+  --text-xl: 1.1875rem;
+  --text-2xl: 1.375rem;
 }
 
 body {
   background: var(--color-background);
   color: var(--color-foreground);
-  font-size: 16px;
+  font-size: var(--text-base);
 }
