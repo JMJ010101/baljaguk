@@ -86,8 +86,8 @@ export default function PlacesExplorer({ sidoState }: { sidoState: SidoListState
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-6">
+        <div className="flex flex-col gap-2 md:w-64 md:shrink-0">
           <label htmlFor="sido" className="font-bold">
             지역
           </label>
@@ -122,7 +122,7 @@ export default function PlacesExplorer({ sidoState }: { sidoState: SidoListState
           )}
         </div>
 
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 md:flex-1">
           <p id="type-label" className="font-bold">
             장소 유형
           </p>
@@ -169,7 +169,7 @@ export default function PlacesExplorer({ sidoState }: { sidoState: SidoListState
             {outcome.totalCount !== undefined && (
               <p className="text-base text-muted">{outcome.totalCount.toLocaleString("ko-KR")}곳</p>
             )}
-            <ul className="flex flex-col gap-4">
+            <ul className="flex flex-col gap-4 md:grid md:grid-cols-2">
               {outcome.places.map((place) => (
                 <li key={place.id}>
                   <PlaceCard place={place} href={buildPlaceDetailHref(place.id, query)} />

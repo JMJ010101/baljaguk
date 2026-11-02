@@ -9,7 +9,7 @@ type Props = {
 // 번호 목록 대신 이전 / 현재 / 다음만 보여준다. (모바일 360px 기준)
 export default function Pagination({ page, pageCount, buildHref }: Props) {
   return (
-    <nav aria-label="페이지 이동" className="flex items-center gap-3">
+    <nav aria-label="페이지 이동" className="flex items-center gap-3 md:mx-auto md:w-full md:max-w-md">
       <div className="flex-1">
         {page > 1 && (
           <Button href={buildHref(page - 1)} variant="secondary">

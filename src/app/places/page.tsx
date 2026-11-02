@@ -29,7 +29,7 @@ export default async function PlacesPage() {
   const sidoState = await loadSidoState();
 
   return (
-    <PageContainer>
+    <PageContainer width="wide">
       <h1 className="text-2xl font-bold">장소 둘러보기</h1>
       <p className="mt-2 text-base text-muted">반려동물 동반 정보가 있는 장소예요.</p>
       <div className="mt-6">

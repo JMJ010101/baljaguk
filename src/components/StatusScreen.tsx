@@ -28,7 +28,7 @@ export default function StatusScreen({
         </div>
         <h2 className="mt-4 text-xl font-bold">{title}</h2>
         <p className="mt-2 text-base text-muted">{description}</p>
-        {children !== undefined && <div className="mt-6 flex w-full flex-col gap-3">{children}</div>}
+        {children !== undefined && <div className="mt-6 flex w-full flex-col gap-3 md:max-w-sm">{children}</div>}
       </section>
     );
   }
