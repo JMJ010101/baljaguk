@@ -11,15 +11,27 @@ const STEPS = [
   { title: "지도에서 확인하기", description: "코스를 지도와 카드로 보고, 링크로 나눌 수 있어요." },
 ];
 
+// 히어로 진입 애니메이션 지연(ms). 위에서 아래로 80ms 간격이다.
+const HERO_DELAY_MS = { title: 0, lead: 80, sub: 160, actions: 240 };
+
 export default function Home() {
   return (
     <main className="mx-auto w-full max-w-md flex-1 px-4 pb-12 pt-6 md:max-w-3xl">
       <section className="rounded-card bg-primary-soft p-6">
-        <h1 className="text-2xl font-bold">하루 코스를 만들어요</h1>
-        <p className="mt-2 text-base text-muted">동반 정보가 있는 장소로 하루 코스를 만들어요.</p>
-        <p className="mt-2 text-base text-muted">지역과 장소 유형을 고르면 코스를 정해 드려요.</p>
+        <h1 className="home-fade-up text-2xl font-bold" style={{ animationDelay: `${HERO_DELAY_MS.title}ms` }}>
+          하루 코스를 만들어요
+        </h1>
+        <p className="home-fade-up mt-2 text-base text-muted" style={{ animationDelay: `${HERO_DELAY_MS.lead}ms` }}>
+          동반 정보가 있는 장소로 하루 코스를 만들어요.
+        </p>
+        <p className="home-fade-up mt-2 text-base text-muted" style={{ animationDelay: `${HERO_DELAY_MS.sub}ms` }}>
+          지역과 장소 유형을 고르면 코스를 정해 드려요.
+        </p>
 
-        <div className="mt-6 flex flex-col gap-3 md:flex-row">
+        <div
+          className="home-fade-up mt-6 flex flex-col gap-3 md:flex-row"
+          style={{ animationDelay: `${HERO_DELAY_MS.actions}ms` }}
+        >
           <Button href="/course/new">코스 만들기</Button>
           <Button href="/places" variant="secondary">
             장소 둘러보기

@@ -32,3 +32,22 @@ body {
   color: var(--color-foreground);
   font-size: var(--text-base);
 }
+
+/* 홈 진입 애니메이션. 키프레임과 시작값은 "동작 줄이기"를 켜지 않은 환경에서만 존재한다.
+   그 밖에서는 이 규칙이 없어서 내용이 처음부터 그대로 보인다. 홈 컴포넌트에만 쓴다. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes home-fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .home-fade-up {
+    animation: home-fade-up 400ms ease-out backwards;
+  }
+}
