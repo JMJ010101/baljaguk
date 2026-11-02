@@ -54,7 +54,8 @@ async function fetchPlaces(url: string, signal: AbortSignal): Promise<ListOutcom
   }
 }
 
-const fieldClass = "min-h-12 w-full rounded-button border-2 border-accent bg-surface px-3 text-base disabled:opacity-60";
+const fieldClass =
+  "min-h-12 w-full rounded-button border-2 border-accent bg-surface px-3 text-base enabled:hover:border-primary enabled:focus-visible:border-primary motion-safe:transition-colors disabled:opacity-60";
 
 export default function PlacesExplorer({ sidoState }: { sidoState: SidoListState }) {
   const router = useRouter();
@@ -135,10 +136,10 @@ export default function PlacesExplorer({ sidoState }: { sidoState: SidoListState
                   href={buildPlacesHref({ ...query, type: type.id, page: 1 })}
                   scroll={false}
                   aria-current={selected ? "true" : undefined}
-                  className={`inline-flex min-h-11 items-center rounded-tag border-2 px-4 text-base ${
+                  className={`inline-flex min-h-11 items-center rounded-tag border-2 px-4 text-base motion-safe:transition-colors ${
                     selected
                       ? "border-primary bg-primary-soft font-bold text-primary"
-                      : "border-accent bg-surface text-foreground"
+                      : "border-accent bg-surface text-foreground hover:border-primary hover:bg-primary-soft focus-visible:border-primary focus-visible:bg-primary-soft"
                   }`}
                 >
                   {type.label}

@@ -12,7 +12,7 @@ const STEP_DELAY_GAP_MS = 150;
 export default function StepCard({ step, title, description }: Props) {
   return (
     <li
-      className="home-fade-up rounded-card bg-surface p-4 shadow-card"
+      className="home-fade-up rounded-card bg-surface p-4 shadow-card motion-safe:transition-[scale] motion-safe:duration-150 motion-safe:hover:scale-[1.02]"
       style={{ animationDelay: `${STEP_DELAY_BASE_MS + (step - 1) * STEP_DELAY_GAP_MS}ms` }}
     >
       <span className="inline-flex size-8 items-center justify-center rounded-tag bg-primary-soft text-base font-bold text-primary">

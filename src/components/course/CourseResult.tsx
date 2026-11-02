@@ -56,6 +56,7 @@ function StopCard({ stop, order }: { stop: Extract<CoursePlace, { kind: "ok" }>;
   const { place, detail, stale } = stop;
   return (
     <PlaceCard
+      hover={false}
       place={place}
       href={`/places/${place.id}`}
       badge={<NumberBadge order={order} />}
@@ -75,7 +76,7 @@ function StopCard({ stop, order }: { stop: Extract<CoursePlace, { kind: "ok" }>;
             </p>
           )}
           {stale && <p className="text-base text-muted">정보가 오래됐을 수 있어요.</p>}
-          <VisitCheckNotice />
+          <VisitCheckNotice hover={false} />
         </>
       }
     />

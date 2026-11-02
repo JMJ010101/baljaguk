@@ -18,9 +18,11 @@
   --radius-tag: 999px;
 
   --shadow-card: 0 2px 8px rgb(36 48 39 / 0.08);
+  /* 누를 수 있는 카드에 마우스를 올렸을 때의 그림자다. 색은 본문 글자색(foreground)과 같은 값이다. */
+  --shadow-card-hover: 0 6px 16px rgb(36 48 39 / 0.14);
 
-  /* 글씨 크기: Tailwind 기본값(base 16, lg 18, xl 20, 2xl 24)보다 약간 줄인 값이다.
-     sm(14px)은 안내 글자의 최소 크기(DESIGN.md)라 그대로 둔다. 줄 간격은 크기에 비례한다. */
+  /* 글씨 크기: 본문 base는 16px이다. 보조 글자 sm은 15px로 안내 글자의 최소 크기(DESIGN.md 14px) 이상이다.
+     줄 간격은 크기에 비례한다. */
   --text-base: 0.9375rem;
   --text-lg: 1.0625rem;
   --text-xl: 1.1875rem;
@@ -49,5 +51,50 @@ body {
 
   .home-fade-up {
     animation: home-fade-up 400ms ease-out backwards;
+  }
+
+  /* 홈 예시 코스 지도. 핀과 발자국은 opacity와 transform(scale)으로, 점선은 opacity로 한 번만 나타난다. */
+  @keyframes home-pop-in {
+    from {
+      opacity: 0;
+      transform: scale(0.6);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes home-fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .home-pop-in {
+    animation: home-pop-in 400ms ease-out backwards;
+  }
+
+  .home-fade-in {
+    animation: home-fade-in 500ms ease-out backwards;
+  }
+
+  /* 홈 지도 카드 문구의 강조 띠. 왼쪽에서 오른쪽으로 그어진다. transform(scaleX)과 opacity만 쓰고 한 번만 재생한다. */
+  @keyframes home-sweep-in {
+    from {
+      opacity: 0;
+      transform: scaleX(0);
+    }
+    to {
+      opacity: 1;
+      transform: scaleX(1);
+    }
+  }
+
+  .home-sweep-in {
+    animation: home-sweep-in 500ms ease-out backwards;
   }
 }

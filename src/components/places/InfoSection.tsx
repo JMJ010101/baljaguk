@@ -15,7 +15,7 @@ export default function InfoSection({
   return (
     <section className="mt-8">
       <h2 className="text-xl font-bold">{title}</h2>
-      <div className="mt-3 flex flex-col gap-4 rounded-card bg-surface p-4 shadow-card">
+      <div className="mt-3 flex flex-col gap-4 rounded-card bg-surface p-4 shadow-card motion-safe:transition-[scale] motion-safe:duration-150 motion-safe:hover:scale-[1.02]">
         {children}
         {showNotice && <VisitCheckNotice />}
       </div>

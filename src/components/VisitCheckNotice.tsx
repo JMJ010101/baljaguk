@@ -1,8 +1,13 @@
-export default function VisitCheckNotice() {
+const NOTICE = "flex items-center justify-center gap-2 rounded-button bg-notice px-3 py-2 text-sm font-medium text-foreground";
+// 호버에서 살짝 커진다. 움직임은 "동작 줄이기"에서 빠진다.
+const NOTICE_HOVER = "motion-safe:transition-[scale] motion-safe:duration-150 motion-safe:hover:scale-[1.03]";
+
+// hover는 호버 효과를 켤지 정한다. 기본은 켜짐이다. 코스 결과의 카드 안에서는 false로 둔다.
+export default function VisitCheckNotice({ hover = true }: { hover?: boolean }) {
   return (
     <div
       role="note"
-      className="flex items-center gap-2 rounded-button bg-notice px-3 py-2 text-sm font-medium text-foreground"
+      className={hover ? `${NOTICE} ${NOTICE_HOVER}` : NOTICE}
     >
       <svg
         aria-hidden="true"

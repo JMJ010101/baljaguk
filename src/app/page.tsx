@@ -1,6 +1,7 @@
 import Button from "@/components/Button";
 import PageContainer from "@/components/PageContainer";
 import VisitCheckNotice from "@/components/VisitCheckNotice";
+import CoursePreviewPanel from "@/components/home/CoursePreviewPanel";
 import StepCard from "@/components/home/StepCard";
 
 // 홈은 데이터를 불러오지 않는 정적 화면이다. 그래서 로딩, 빈 결과, 오류 상태가 없다.
@@ -18,7 +19,8 @@ const HERO_DELAY_MS = { title: 0, lead: 80, sub: 160, actions: 240 };
 export default function Home() {
   return (
     <PageContainer width="wide">
-      <section className="rounded-card bg-primary-soft p-6">
+      <CoursePreviewPanel />
+      <section className="break-keep rounded-card bg-primary-soft p-6 text-center motion-safe:transition-[scale] motion-safe:duration-150 motion-safe:hover:scale-[1.02]">
         <h1 className="home-fade-up text-2xl font-bold" style={{ animationDelay: `${HERO_DELAY_MS.title}ms` }}>
           하루 코스를 만들어요
         </h1>
@@ -30,7 +32,7 @@ export default function Home() {
         </p>
 
         <div
-          className="home-fade-up mt-6 flex flex-col gap-3 md:max-w-md md:flex-row"
+          className="home-fade-up mt-6 flex flex-col gap-3 md:mx-auto md:max-w-md md:flex-row"
           style={{ animationDelay: `${HERO_DELAY_MS.actions}ms` }}
         >
           <Button href="/course/new">코스 만들기</Button>
@@ -41,7 +43,7 @@ export default function Home() {
       </section>
 
       <section className="mt-8">
-        <h2 className="text-xl font-bold">이렇게 만들어요</h2>
+        <h2 className="text-center text-xl font-bold">이렇게 만들어요</h2>
         <ol className="mt-4 grid gap-3 md:grid-cols-3">
           {STEPS.map((step, index) => (
             <StepCard key={step.title} step={index + 1} title={step.title} description={step.description} />
@@ -49,12 +51,12 @@ export default function Home() {
         </ol>
       </section>
 
-      <section className="mt-8 flex flex-col items-start gap-2">
+      <section className="mt-8 flex flex-col items-center gap-2 break-keep text-center">
         <VisitCheckNotice />
         <p className="text-base text-muted">동반 조건과 운영시간은 달라질 수 있어요. 방문 전에 꼭 확인해 주세요.</p>
       </section>
 
-      <p className="mt-8 text-center text-base text-muted">장소 정보는 한국관광공사 데이터를 바탕으로 해요.</p>
+      <p className="mt-8 break-keep text-center text-base text-muted">장소 정보는 한국관광공사 데이터를 바탕으로 해요.</p>
     </PageContainer>
   );
 }

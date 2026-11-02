@@ -116,6 +116,7 @@ export default function CourseMap({ stops, hiddenCount }: { stops: MapStop[]; hi
             <p className="text-base text-muted">{FAILED_DESCRIPTION}</p>
             {status.reason !== "no-key" && (
               <Button
+                hover={false}
                 variant="secondary"
                 onClick={() => {
                   setStatus({ kind: "loading" });

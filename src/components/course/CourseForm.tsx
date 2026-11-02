@@ -19,7 +19,8 @@ import type { SidoListState } from "@/types";
 const COURSE_TYPES = CONTENT_TYPES.filter((type) => COURSE_CONTENT_TYPE_IDS.includes(type.id));
 const FORM_NOTICE = "조건을 확인하지 못했어요. 선택한 내용을 다시 확인해 주세요.";
 
-const fieldClass = "min-h-12 w-full rounded-button border-2 border-accent bg-surface px-3 text-base disabled:opacity-60";
+const fieldClass =
+  "min-h-12 w-full rounded-button border-2 border-accent bg-surface px-3 text-base enabled:hover:border-primary enabled:focus-visible:border-primary motion-safe:transition-colors disabled:opacity-60";
 
 type Phase =
   | { kind: "form"; notice: boolean }
@@ -106,7 +107,7 @@ export default function CourseForm({ sidoState, prefill }: { sidoState: SidoList
       <p className="mt-2 text-base text-muted">조건을 고르면 하루 코스를 만들어드려요.</p>
 
       {phase.notice && (
-        <p role="alert" className="mt-4 rounded-card bg-notice px-4 py-3 text-base font-bold text-danger">
+        <p role="alert" className="mt-4 rounded-card bg-notice px-4 py-3 text-base font-bold text-danger motion-safe:transition-[scale] motion-safe:duration-150 motion-safe:hover:scale-[1.02]">
           {FORM_NOTICE}
         </p>
       )}
@@ -194,10 +195,10 @@ export default function CourseForm({ sidoState, prefill }: { sidoState: SidoList
                   type="button"
                   aria-pressed={selected}
                   onClick={() => toggleType(type.id)}
-                  className={`inline-flex min-h-11 items-center rounded-tag border-2 px-4 text-base ${
+                  className={`inline-flex min-h-11 items-center rounded-tag border-2 px-4 text-base motion-safe:transition-colors ${
                     selected
                       ? "border-primary bg-primary-soft font-bold text-primary"
-                      : "border-accent bg-surface text-foreground"
+                      : "border-accent bg-surface text-foreground hover:border-primary hover:bg-primary-soft focus-visible:border-primary focus-visible:bg-primary-soft"
                   }`}
                 >
                   {type.label}
@@ -215,7 +216,7 @@ export default function CourseForm({ sidoState, prefill }: { sidoState: SidoList
           <textarea
             id="mood"
             rows={4}
-            className="min-h-28 w-full rounded-button border-2 border-accent bg-surface px-3 py-2 text-base"
+            className="min-h-28 w-full rounded-button border-2 border-accent bg-surface px-3 py-2 text-base hover:border-primary focus-visible:border-primary motion-safe:transition-colors"
             placeholder="예: 조용하고 한적한 곳"
             value={values.mood}
             onChange={(e) => setValues((prev) => ({ ...prev, mood: e.target.value }))}
@@ -230,7 +231,7 @@ export default function CourseForm({ sidoState, prefill }: { sidoState: SidoList
           <button
             type="submit"
             disabled={sigunguPending}
-            className="inline-flex min-h-12 w-full items-center justify-center rounded-button bg-primary px-5 py-2 text-base font-bold text-on-primary disabled:opacity-60"
+            className="inline-flex min-h-12 w-full items-center justify-center rounded-button bg-primary px-5 py-2 text-base font-bold text-on-primary enabled:hover:brightness-90 enabled:focus-visible:brightness-90 motion-safe:transition-[filter,translate,scale] motion-safe:duration-150 motion-safe:enabled:hover:-translate-y-0.5 motion-safe:enabled:hover:scale-[1.03] motion-safe:enabled:focus-visible:-translate-y-0.5 motion-safe:enabled:focus-visible:scale-[1.03] disabled:opacity-60"
           >
             코스 만들기
           </button>
