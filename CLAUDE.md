@@ -52,7 +52,7 @@
 src/
 ├─ app/ (page.tsx, places/page.tsx, places/[id]/page.tsx, places/[id]/loading.tsx, course/new/page.tsx, course/[id]/page.tsx, course/[id]/loading.tsx, course/[id]/not-found.tsx, about/ (예정, 미구현), error.tsx, not-found.tsx)
 ├─ app/api/ (places/route.ts, places/[id]/route.ts, regions/route.ts, course/route.ts)
-├─ components/ (Button.tsx, Header.tsx, Pagination.tsx, PlaceCard.tsx, PlaceImage.tsx, RefreshButton.tsx, StatusScreen.tsx, Tag.tsx, VisitCheckNotice.tsx, places/InfoRow.tsx, places/InfoSection.tsx, places/PlaceDetailStatus.tsx, places/PlaceDetailView.tsx, places/PlacesExplorer.tsx, places/PlacesStatus.tsx, course/CopyLinkButton.tsx, course/CourseError.tsx, course/CourseForm.tsx, course/CourseProgress.tsx, course/CourseResult.tsx, course/CourseStatus.tsx, course/useSigungu.ts, course/CourseMap.tsx, course/kakaoMapSdk.ts, home/StepCard.tsx)
+├─ components/ (Button.tsx, Header.tsx, PageContainer.tsx, Pagination.tsx, PlaceCard.tsx, PlaceImage.tsx, RefreshButton.tsx, StatusScreen.tsx, Tag.tsx, VisitCheckNotice.tsx, places/InfoRow.tsx, places/InfoSection.tsx, places/PlaceDetailStatus.tsx, places/PlaceDetailView.tsx, places/PlacesExplorer.tsx, places/PlacesStatus.tsx, course/CopyLinkButton.tsx, course/CourseError.tsx, course/CourseForm.tsx, course/CourseProgress.tsx, course/CourseResult.tsx, course/CourseStatus.tsx, course/useSigungu.ts, course/CourseMap.tsx, course/kakaoMapSdk.ts, home/StepCard.tsx)
 ├─ lib/
 │  ├─ ai/ (client.ts, parse.ts, picks.ts, constants.ts, types.ts, prompts/)
 │  ├─ tour/ (client.ts, normalize.ts, places.ts, placeDetail.ts, regions.ts, contentTypes.ts, candidates.ts)
@@ -78,6 +78,7 @@ db/migrations/
 - PlaceCard는 선택 props badge(순서 번호)와 footer(아래 줄)를 받는다. 코스 화면이 footer에 동반 구분, 운영시간, "방문 전 확인 필요"를 넣는다. 링크 복사 주소는 buildCourseShareUrl(origin, id)로 만들며 id만 쓴다.
 - db/migrations/ 에는 번호를 붙인 SQL 파일만 둔다.
 - 한 파일에 로직을 몰아넣지 않는다.
+- 화면 본문의 폭과 여백은 components/PageContainer.tsx가 정하고 width(wide, reading)는 필수다. 폭 클래스는 완전한 문자열 상수로만 두고 max-w-${x}처럼 이어 붙여 만들지 않는다. 폭 단계는 DESIGN.md "데스크톱 폭"을 따른다.
 
 ## 보안 규칙
 - OpenAI 키, 관광공사 API 키, Supabase secret 키(sb_secret_...)는 서버 코드에서만 사용한다.
