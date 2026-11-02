@@ -16,12 +16,12 @@ type Props = {
   children: ReactNode;
   // 위 여백(pt-6)을 둘지 정한다. 장소 상세는 맨 위가 "목록으로" 행이라 두지 않는다.
   top?: boolean;
-  // 데스크톱 폭 단계. 없으면 md 이상에서도 모바일 폭(max-w-md)을 유지한다.
-  width?: keyof typeof PAGE_WIDTH_CLASS;
+  // 데스크톱 폭 단계. 필수다. 모든 화면이 폭을 정해야 한다.
+  width: keyof typeof PAGE_WIDTH_CLASS;
 };
 
 export default function PageContainer({ children, top = true, width }: Props) {
   const base = top ? WITH_TOP : NO_TOP;
-  const className = width === undefined ? base : `${base} ${PAGE_WIDTH_CLASS[width]}`;
+  const className = `${base} ${PAGE_WIDTH_CLASS[width]}`;
   return <main className={className}>{children}</main>;
 }
