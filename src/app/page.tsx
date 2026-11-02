@@ -1,4 +1,5 @@
 import Button from "@/components/Button";
+import PageContainer from "@/components/PageContainer";
 import VisitCheckNotice from "@/components/VisitCheckNotice";
 import StepCard from "@/components/home/StepCard";
 
@@ -16,7 +17,7 @@ const HERO_DELAY_MS = { title: 0, lead: 80, sub: 160, actions: 240 };
 
 export default function Home() {
   return (
-    <main className="mx-auto w-full max-w-md flex-1 px-4 pb-12 pt-6 md:max-w-3xl">
+    <PageContainer width="wide">
       <section className="rounded-card bg-primary-soft p-6">
         <h1 className="home-fade-up text-2xl font-bold" style={{ animationDelay: `${HERO_DELAY_MS.title}ms` }}>
           하루 코스를 만들어요
@@ -29,7 +30,7 @@ export default function Home() {
         </p>
 
         <div
-          className="home-fade-up mt-6 flex flex-col gap-3 md:flex-row"
+          className="home-fade-up mt-6 flex flex-col gap-3 md:max-w-md md:flex-row"
           style={{ animationDelay: `${HERO_DELAY_MS.actions}ms` }}
         >
           <Button href="/course/new">코스 만들기</Button>
@@ -54,6 +55,6 @@ export default function Home() {
       </section>
 
       <p className="mt-8 text-center text-base text-muted">장소 정보는 한국관광공사 데이터를 바탕으로 해요.</p>
-    </main>
+    </PageContainer>
   );
 }
