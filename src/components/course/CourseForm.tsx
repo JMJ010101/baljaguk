@@ -101,7 +101,7 @@ export default function CourseForm({ sidoState, prefill }: { sidoState: SidoList
   const sigunguNote = sigungu.status === "failed" ? sigunguNotice(sigungu.failure) : undefined;
 
   return (
-    <PageContainer>
+    <PageContainer width="reading">
       <h1 className="text-2xl font-bold">어디로 가볼까요?</h1>
       <p className="mt-2 text-base text-muted">조건을 고르면 하루 코스를 만들어드려요.</p>
 
