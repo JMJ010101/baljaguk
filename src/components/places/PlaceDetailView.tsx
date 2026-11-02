@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PageContainer from "@/components/PageContainer";
 import InfoRow from "@/components/places/InfoRow";
 import InfoSection from "@/components/places/InfoSection";
 import PlaceImage from "@/components/PlaceImage";
@@ -20,7 +21,7 @@ export default function PlaceDetailView({ place, detail, backHref }: Props) {
   const typeLabel = getContentTypeLabel(place.contentTypeId);
 
   return (
-    <main className="mx-auto w-full max-w-md flex-1 px-4 pb-12">
+    <PageContainer top={false}>
       <Link href={backHref} className="inline-flex min-h-11 items-center gap-1 text-base font-bold text-primary">
         <svg
           aria-hidden="true"
@@ -94,6 +95,6 @@ export default function PlaceDetailView({ place, detail, backHref }: Props) {
       )}
 
       <p className="mt-8 text-center text-base text-muted">장소 정보와 사진은 한국관광공사 데이터를 바탕으로 해요.</p>
-    </main>
+    </PageContainer>
   );
 }

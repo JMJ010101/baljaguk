@@ -2,6 +2,7 @@ import Link from "next/link";
 import Button from "@/components/Button";
 import CopyLinkButton from "@/components/course/CopyLinkButton";
 import CourseMap from "@/components/course/CourseMap";
+import PageContainer from "@/components/PageContainer";
 import PlaceCard from "@/components/PlaceCard";
 import Tag from "@/components/Tag";
 import VisitCheckNotice from "@/components/VisitCheckNotice";
@@ -112,7 +113,7 @@ export default function CourseResult({ course, places }: { course: PublicCourse;
   const { stops: mapStops, hiddenCount } = buildMapStops(places);
 
   return (
-    <main className="mx-auto w-full max-w-md flex-1 px-4 pb-12 pt-6">
+    <PageContainer>
       <h1 className="text-2xl font-bold">하루 코스가 만들어졌어요</h1>
       <p className="mt-2 text-base text-muted">반려동물 동반 정보가 있는 장소로 골랐어요. 방문 전 확인이 필요해요.</p>
       <div className="mt-4">
@@ -148,6 +149,6 @@ export default function CourseResult({ course, places }: { course: PublicCourse;
       </div>
 
       <p className="mt-8 text-center text-base text-muted">장소 정보는 한국관광공사 데이터를 바탕으로 해요.</p>
-    </main>
+    </PageContainer>
   );
 }

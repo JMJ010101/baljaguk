@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import PageContainer from "@/components/PageContainer";
 import PlacesExplorer from "@/components/places/PlacesExplorer";
 import { PlacesLoading } from "@/components/places/PlacesStatus";
 import { AppError } from "@/lib/errors";
@@ -28,7 +29,7 @@ export default async function PlacesPage() {
   const sidoState = await loadSidoState();
 
   return (
-    <main className="mx-auto w-full max-w-md flex-1 px-4 pb-12 pt-6">
+    <PageContainer>
       <h1 className="text-2xl font-bold">장소 둘러보기</h1>
       <p className="mt-2 text-base text-muted">반려동물 동반 정보가 있는 장소예요.</p>
       <div className="mt-6">
@@ -38,6 +39,6 @@ export default async function PlacesPage() {
         </Suspense>
       </div>
       <p className="mt-8 text-center text-base text-muted">장소 정보와 사진은 한국관광공사 데이터를 바탕으로 해요.</p>
-    </main>
+    </PageContainer>
   );
 }

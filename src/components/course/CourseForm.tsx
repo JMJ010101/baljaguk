@@ -6,6 +6,7 @@ import Button from "@/components/Button";
 import CourseError from "@/components/course/CourseError";
 import CourseProgress from "@/components/course/CourseProgress";
 import { useSigungu } from "@/components/course/useSigungu";
+import PageContainer from "@/components/PageContainer";
 import { MOOD_MAX_LENGTH } from "@/lib/ai/constants";
 import { classifySubmitError, type ErrorScreenKind } from "@/lib/course/errorScreen";
 import { moodLength, validateCourseForm, type CourseFormErrors, type CourseFormValues } from "@/lib/course/formErrors";
@@ -100,7 +101,7 @@ export default function CourseForm({ sidoState, prefill }: { sidoState: SidoList
   const sigunguNote = sigungu.status === "failed" ? sigunguNotice(sigungu.failure) : undefined;
 
   return (
-    <main className="mx-auto w-full max-w-md flex-1 px-4 pb-12 pt-6">
+    <PageContainer>
       <h1 className="text-2xl font-bold">어디로 가볼까요?</h1>
       <p className="mt-2 text-base text-muted">조건을 고르면 하루 코스를 만들어드려요.</p>
 
@@ -236,6 +237,6 @@ export default function CourseForm({ sidoState, prefill }: { sidoState: SidoList
           <p className="text-center text-base text-muted">코스를 만드는 데 시간이 조금 걸릴 수 있어요.</p>
         </div>
       </form>
-    </main>
+    </PageContainer>
   );
 }
