@@ -23,10 +23,11 @@
 
   /* 글씨 크기: 본문 base는 16px이다. 보조 글자 sm은 15px로 안내 글자의 최소 크기(DESIGN.md 14px) 이상이다.
      줄 간격은 크기에 비례한다. */
-  --text-base: 0.9375rem;
-  --text-lg: 1.0625rem;
-  --text-xl: 1.1875rem;
-  --text-2xl: 1.375rem;
+  --text-sm: 0.9375rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
 }
 
 body {
