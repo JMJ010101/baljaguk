@@ -21,7 +21,7 @@ export default function PlaceDetailView({ place, detail, backHref }: Props) {
   const typeLabel = getContentTypeLabel(place.contentTypeId);
 
   return (
-    <PageContainer top={false}>
+    <PageContainer top={false} width="reading">
       <Link href={backHref} className="inline-flex min-h-11 items-center gap-1 text-base font-bold text-primary">
         <svg
           aria-hidden="true"
